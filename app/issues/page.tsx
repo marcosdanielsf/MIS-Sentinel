@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import DateFilter, { DateRange } from '@/components/DateFilter';
 import {
     Clock,
     CheckCircle,
@@ -12,11 +13,7 @@ import {
     User,
     Phone,
     MessageSquare,
-    TrendingUp,
     X,
-    Check,
-    ArrowUp,
-    Filter,
     Search,
 } from 'lucide-react';
 
@@ -56,6 +53,11 @@ interface IssueAction {
 export default function IssuesPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const [dateRange, setDateRange] = useState<DateRange>({
+        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+        label: 'Últimos 7 dias'
+    });
     const [issues, setIssues] = useState<Issue[]>([]);
     const [filteredIssues, setFilteredIssues] = useState<Issue[]>([]);
     const [loadingIssues, setLoadingIssues] = useState(true);
@@ -77,11 +79,35 @@ export default function IssuesPage() {
         }
     }, [user, loading, router]);
 
+    const fetchIssues = useCallback(async (range: DateRange) => {
+        try {
+            setLoadingIssues(true);
+            const { data, error } = await supabase
+                .from('issues')
+                .select('*')
+                .gte('detected_at', range.startDate.toISOString())
+                .lte('detected_at', range.endDate.toISOString())
+                .order('detected_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching issues:', error);
+                setIssues([]);
+            } else {
+                setIssues(data || []);
+            }
+        } catch (error) {
+            console.error('Failed to fetch issues:', error);
+            setIssues([]);
+        } finally {
+            setLoadingIssues(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (user) {
-            fetchIssues();
+            fetchIssues(dateRange);
         }
-    }, [user]);
+    }, [user, dateRange, fetchIssues]);
 
     useEffect(() => {
         let filtered = issues;
@@ -109,26 +135,8 @@ export default function IssuesPage() {
         setFilteredIssues(filtered);
     }, [searchTerm, filterStatus, filterPriority, issues]);
 
-    const fetchIssues = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('issues')
-                .select('*')
-                .order('detected_at', { ascending: false });
-
-            if (error) {
-                console.error('Error fetching issues:', error);
-                setIssues([]);
-            } else {
-                setIssues(data || []);
-                setFilteredIssues(data || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch issues:', error);
-            setIssues([]);
-        } finally {
-            setLoadingIssues(false);
-        }
+    const handleDateChange = (range: DateRange) => {
+        setDateRange(range);
     };
 
     const fetchIssueActions = async (issueId: string) => {
@@ -155,7 +163,7 @@ export default function IssuesPage() {
 
     const handleUpdateStatus = async (issueId: string, newStatus: string) => {
         try {
-            const updates: any = { status: newStatus };
+            const updates: Record<string, string> = { status: newStatus };
 
             if (newStatus === 'resolved') {
                 updates.resolved_at = new Date().toISOString();
@@ -164,7 +172,7 @@ export default function IssuesPage() {
             await supabase.from('issues').update(updates).eq('id', issueId);
 
             // Refresh
-            fetchIssues();
+            fetchIssues(dateRange);
             if (selectedIssue?.id === issueId) {
                 setSelectedIssue({ ...selectedIssue, ...updates });
             }
@@ -196,7 +204,7 @@ export default function IssuesPage() {
             });
 
             alert('Issue resolvido com sucesso!');
-            fetchIssues();
+            fetchIssues(dateRange);
             setSelectedIssue(null);
         } catch (error) {
             console.error('Failed to resolve issue:', error);
@@ -226,7 +234,7 @@ export default function IssuesPage() {
             });
 
             alert('Issue atribuído com sucesso!');
-            fetchIssues();
+            fetchIssues(dateRange);
             fetchIssueActions(selectedIssue.id);
         } catch (error) {
             console.error('Failed to assign issue:', error);
@@ -258,7 +266,7 @@ export default function IssuesPage() {
 
             setNewActionDescription('');
             fetchIssueActions(selectedIssue.id);
-            fetchIssues();
+            fetchIssues(dateRange);
         } catch (error) {
             console.error('Failed to add action:', error);
             alert('Erro ao adicionar ação');
@@ -321,11 +329,14 @@ export default function IssuesPage() {
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">🎯 Gerenciamento de Issues</h1>
-                        <p className="mt-2 text-gray-600">
-                            Rastreie e resolva problemas identificados pelo MIS SENTINEL
-                        </p>
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">🎯 Gerenciamento de Issues</h1>
+                            <p className="mt-2 text-gray-600">
+                                Rastreie e resolva problemas identificados pelo MIS SENTINEL
+                            </p>
+                        </div>
+                        <DateFilter onDateChange={handleDateChange} />
                     </div>
 
                     {/* Search and Filters */}
@@ -382,7 +393,7 @@ export default function IssuesPage() {
                         {/* Issues List */}
                         <div className="space-y-4">
                             <h2 className="text-xl font-semibold text-gray-900">
-                                Issues ({filteredIssues.length})
+                                Issues no Período ({filteredIssues.length})
                             </h2>
 
                             {loadingIssues ? (
@@ -394,7 +405,7 @@ export default function IssuesPage() {
                                 <div className="bg-white p-12 rounded-lg shadow text-center">
                                     <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
                                     <p className="text-gray-900 font-semibold text-lg">Nenhum issue encontrado</p>
-                                    <p className="text-gray-500 mt-2">Todos os problemas foram resolvidos!</p>
+                                    <p className="text-gray-500 mt-2">Ajuste os filtros ou período de busca</p>
                                 </div>
                             ) : (
                                 filteredIssues.map((issue) => (

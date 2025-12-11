@@ -1,14 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import StatsCard from '@/components/StatsCard';
-import { AlertTriangle, MessageSquare, Activity, TrendingUp, Zap, CheckCircle } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
+import DateFilter, { DateRange } from '@/components/DateFilter';
+import { AlertTriangle, MessageSquare, Activity, Zap, CheckCircle } from 'lucide-react';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
 const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6'];
 
@@ -22,11 +23,17 @@ interface DashboardStats {
     sentimentBreakdown: { name: string; value: number }[];
     messagesOverTime: { name: string; mensagens: number }[];
     recentAlerts: any[];
+    messagesPerMinute: number;
 }
 
 export default function DashboardPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const [dateRange, setDateRange] = useState<DateRange>({
+        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+        label: 'Últimos 7 dias'
+    });
     const [stats, setStats] = useState<DashboardStats>({
         totalMessages: 0,
         totalAlerts: 0,
@@ -37,6 +44,7 @@ export default function DashboardPage() {
         sentimentBreakdown: [],
         messagesOverTime: [],
         recentAlerts: [],
+        messagesPerMinute: 0,
     });
     const [loadingStats, setLoadingStats] = useState(true);
 
@@ -46,28 +54,33 @@ export default function DashboardPage() {
         }
     }, [user, loading, router]);
 
-    useEffect(() => {
-        if (user) {
-            fetchDashboardStats();
-        }
-    }, [user]);
-
-    const fetchDashboardStats = async () => {
+    const fetchDashboardStats = useCallback(async (range: DateRange) => {
         try {
-            // Fetch messages
+            setLoadingStats(true);
+
+            // Fetch messages within date range
             const { data: messages } = await supabase
                 .from('messages')
-                .select('*');
+                .select('*')
+                .gte('created_at', range.startDate.toISOString())
+                .lte('created_at', range.endDate.toISOString());
 
-            // Fetch alerts
+            // Fetch alerts within date range
             const { data: alerts } = await supabase
                 .from('alerts')
-                .select('*');
+                .select('*')
+                .gte('created_at', range.startDate.toISOString())
+                .lte('created_at', range.endDate.toISOString());
 
             const totalMessages = messages?.length || 0;
             const totalAlerts = alerts?.length || 0;
             const activeAlerts = alerts?.filter(a => a.status === 'active').length || 0;
             const criticalAlerts = alerts?.filter(a => a.severity === 'critical' && a.status === 'active').length || 0;
+
+            // Calculate messages per minute (based on last hour)
+            const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+            const recentMessages = messages?.filter(m => new Date(m.created_at) >= oneHourAgo) || [];
+            const messagesPerMinute = recentMessages.length / 60;
 
             // Calculate avg urgency
             const totalUrgency = messages?.reduce((sum, m) => sum + (m.urgency_score || 0), 0) || 0;
@@ -75,7 +88,8 @@ export default function DashboardPage() {
 
             // Sentiment breakdown
             const sentiments = messages?.reduce((acc, m) => {
-                acc[m.sentiment] = (acc[m.sentiment] || 0) + 1;
+                const sentiment = m.sentiment || 'unknown';
+                acc[sentiment] = (acc[sentiment] || 0) + 1;
                 return acc;
             }, {} as Record<string, number>) || {};
 
@@ -84,15 +98,17 @@ export default function DashboardPage() {
                 value: value as number,
             }));
 
-            // Team members count (use group_sender_name when available)
+            // Team members count
             const uniqueSenders = new Set(messages?.map(m => m.group_sender_name || m.sender_name) || []);
             const teamMembers = uniqueSenders.size;
 
-            // Messages over time (last 7 days)
-            const now = new Date();
+            // Messages over time (based on date range)
+            const daysDiff = Math.ceil((range.endDate.getTime() - range.startDate.getTime()) / (1000 * 60 * 60 * 24));
+            const daysToShow = Math.min(daysDiff, 7);
             const messagesOverTime = [];
-            for (let i = 6; i >= 0; i--) {
-                const date = new Date(now);
+
+            for (let i = daysToShow - 1; i >= 0; i--) {
+                const date = new Date(range.endDate);
                 date.setDate(date.getDate() - i);
                 const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
                 const dayMessages = messages?.filter(m => {
@@ -118,12 +134,23 @@ export default function DashboardPage() {
                 sentimentBreakdown,
                 messagesOverTime,
                 recentAlerts,
+                messagesPerMinute,
             });
         } catch (error) {
             console.error('Failed to fetch dashboard stats:', error);
         } finally {
             setLoadingStats(false);
         }
+    }, []);
+
+    useEffect(() => {
+        if (user) {
+            fetchDashboardStats(dateRange);
+        }
+    }, [user, dateRange, fetchDashboardStats]);
+
+    const handleDateChange = (range: DateRange) => {
+        setDateRange(range);
     };
 
     if (loading || !user) {
@@ -155,11 +182,18 @@ export default function DashboardPage() {
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">🤖 Dashboard MIS SENTINEL</h1>
-                        <p className="mt-2 text-gray-600">
-                            Sistema de Inteligência Mottivme - Monitoramento em Tempo Real
-                        </p>
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">🤖 Dashboard MIS SENTINEL</h1>
+                            <p className="mt-2 text-gray-600">
+                                Sistema de Inteligência Mottivme - Monitoramento em Tempo Real
+                            </p>
+                        </div>
+                        <DateFilter
+                            onDateChange={handleDateChange}
+                            showMessagesPerMinute={true}
+                            messagesPerMinute={stats.messagesPerMinute}
+                        />
                     </div>
 
                     {loadingStats ? (
@@ -205,7 +239,7 @@ export default function DashboardPage() {
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                                 <div className="bg-white p-6 rounded-lg shadow">
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                        📊 Mensagens nos Últimos 7 Dias
+                                        📊 Mensagens no Período
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={stats.messagesOverTime}>

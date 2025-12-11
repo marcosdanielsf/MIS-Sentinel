@@ -1,17 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import DateFilter, { DateRange } from '@/components/DateFilter';
 import {
     Clock,
     CheckCircle,
     AlertTriangle,
     TrendingUp,
-    Users,
     Zap,
     Target,
     Timer,
@@ -19,33 +19,6 @@ import {
     ArrowUp,
     ArrowDown,
 } from 'lucide-react';
-import {
-    LineChart,
-    Line,
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-} from 'recharts';
-
-interface CRTMetrics {
-    issues_today: number;
-    resolved_today: number;
-    currently_open: number;
-    currently_escalated: number;
-    avg_response_time_today: number;
-    avg_resolution_time_today: number;
-    avg_response_time_7d: number;
-    avg_resolution_time_7d: number;
-    avg_satisfaction_7d: number;
-    resolution_rate_7d: number;
-}
 
 interface Issue {
     id: string;
@@ -63,22 +36,38 @@ interface Issue {
     customer_satisfaction: number | null;
 }
 
-interface TopIssue {
-    issue_type: string;
-    occurrences: number;
-    avg_resolution_time: number;
-    currently_open: number;
-    avg_satisfaction: number;
+interface CRTStats {
+    issuesInPeriod: number;
+    resolvedInPeriod: number;
+    currentlyOpen: number;
+    currentlyEscalated: number;
+    avgResponseTime: number;
+    avgResolutionTime: number;
+    avgSatisfaction: number;
+    resolutionRate: number;
+    topIssues: { issue_type: string; count: number; open: number }[];
 }
-
-const COLORS = ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6'];
 
 export default function CRTPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
-    const [metrics, setMetrics] = useState<CRTMetrics | null>(null);
+    const [dateRange, setDateRange] = useState<DateRange>({
+        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+        label: 'Últimos 7 dias'
+    });
+    const [stats, setStats] = useState<CRTStats>({
+        issuesInPeriod: 0,
+        resolvedInPeriod: 0,
+        currentlyOpen: 0,
+        currentlyEscalated: 0,
+        avgResponseTime: 0,
+        avgResolutionTime: 0,
+        avgSatisfaction: 0,
+        resolutionRate: 0,
+        topIssues: [],
+    });
     const [openIssues, setOpenIssues] = useState<Issue[]>([]);
-    const [topIssues, setTopIssues] = useState<TopIssue[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
     useEffect(() => {
@@ -87,41 +76,101 @@ export default function CRTPage() {
         }
     }, [user, loading, router]);
 
-    useEffect(() => {
-        if (user) {
-            fetchCRTData();
-        }
-    }, [user]);
-
-    const fetchCRTData = async () => {
+    const fetchCRTData = useCallback(async (range: DateRange) => {
         try {
-            // Fetch CRT metrics
-            const { data: metricsData } = await supabase
-                .from('crt_metrics')
+            setLoadingData(true);
+
+            // Fetch issues within date range
+            const { data: issues } = await supabase
+                .from('issues')
                 .select('*')
-                .single();
+                .gte('detected_at', range.startDate.toISOString())
+                .lte('detected_at', range.endDate.toISOString());
 
-            setMetrics(metricsData);
-
-            // Fetch open issues
-            const { data: issuesData } = await supabase
+            // Fetch all open issues (regardless of date)
+            const { data: allOpenIssues } = await supabase
                 .from('issues')
                 .select('*')
                 .in('status', ['open', 'in_progress', 'escalated'])
                 .order('detected_at', { ascending: false })
                 .limit(10);
 
-            setOpenIssues(issuesData || []);
+            const issuesInPeriod = issues?.length || 0;
+            const resolvedInPeriod = issues?.filter(i => i.status === 'resolved').length || 0;
+            const currentlyOpen = allOpenIssues?.filter(i => i.status !== 'escalated').length || 0;
+            const currentlyEscalated = allOpenIssues?.filter(i => i.status === 'escalated').length || 0;
 
-            // Fetch top issues
-            const { data: topIssuesData } = await supabase.from('top_issues').select('*');
+            // Calculate avg response time
+            const issuesWithResponse = issues?.filter(i => i.time_to_first_response) || [];
+            const avgResponseTime = issuesWithResponse.length > 0
+                ? issuesWithResponse.reduce((sum, i) => sum + (i.time_to_first_response || 0), 0) / issuesWithResponse.length
+                : 0;
 
-            setTopIssues(topIssuesData || []);
+            // Calculate avg resolution time
+            const issuesWithResolution = issues?.filter(i => i.time_to_resolution) || [];
+            const avgResolutionTime = issuesWithResolution.length > 0
+                ? issuesWithResolution.reduce((sum, i) => sum + (i.time_to_resolution || 0), 0) / issuesWithResolution.length
+                : 0;
+
+            // Calculate avg satisfaction
+            const issuesWithSatisfaction = issues?.filter(i => i.customer_satisfaction) || [];
+            const avgSatisfaction = issuesWithSatisfaction.length > 0
+                ? issuesWithSatisfaction.reduce((sum, i) => sum + (i.customer_satisfaction || 0), 0) / issuesWithSatisfaction.length
+                : 0;
+
+            // Calculate resolution rate
+            const resolutionRate = issuesInPeriod > 0 ? (resolvedInPeriod / issuesInPeriod) * 100 : 0;
+
+            // Calculate top issues
+            const issueTypeCounts: Record<string, { count: number; open: number }> = {};
+
+            issues?.forEach((i) => {
+                if (!issueTypeCounts[i.issue_type]) {
+                    issueTypeCounts[i.issue_type] = { count: 0, open: 0 };
+                }
+                issueTypeCounts[i.issue_type].count++;
+                if (i.status !== 'resolved' && i.status !== 'closed') {
+                    issueTypeCounts[i.issue_type].open++;
+                }
+            });
+
+            const topIssues = Object.keys(issueTypeCounts)
+                .map((issue_type) => ({
+                    issue_type,
+                    count: issueTypeCounts[issue_type].count,
+                    open: issueTypeCounts[issue_type].open
+                }))
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5);
+
+            setStats({
+                issuesInPeriod,
+                resolvedInPeriod,
+                currentlyOpen,
+                currentlyEscalated,
+                avgResponseTime,
+                avgResolutionTime,
+                avgSatisfaction,
+                resolutionRate,
+                topIssues,
+            });
+
+            setOpenIssues(allOpenIssues || []);
         } catch (error) {
             console.error('Failed to fetch CRT data:', error);
         } finally {
             setLoadingData(false);
         }
+    }, []);
+
+    useEffect(() => {
+        if (user) {
+            fetchCRTData(dateRange);
+        }
+    }, [user, dateRange, fetchCRTData]);
+
+    const handleDateChange = (range: DateRange) => {
+        setDateRange(range);
     };
 
     if (loading || !user) {
@@ -187,11 +236,14 @@ export default function CRTPage() {
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">⏱️ Customer Resolution Time (CRT)</h1>
-                        <p className="mt-2 text-gray-600">
-                            Dashboard focado em resolver problemas, não apenas monitorá-los
-                        </p>
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">⏱️ Customer Resolution Time (CRT)</h1>
+                            <p className="mt-2 text-gray-600">
+                                Dashboard focado em resolver problemas, não apenas monitorá-los
+                            </p>
+                        </div>
+                        <DateFilter onDateChange={handleDateChange} />
                     </div>
 
                     {loadingData ? (
@@ -211,11 +263,11 @@ export default function CRTPage() {
                                         <Timer className="h-8 w-8 opacity-80" />
                                     </div>
                                     <p className="text-4xl font-bold">
-                                        {formatMinutes(metrics?.avg_response_time_7d || 0)}
+                                        {formatMinutes(stats.avgResponseTime)}
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">Últimos 7 dias</p>
+                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
-                                        {(metrics?.avg_response_time_7d || 0) < 60 ? (
+                                        {stats.avgResponseTime < 60 || stats.avgResponseTime === 0 ? (
                                             <>
                                                 <ArrowDown className="h-4 w-4" />
                                                 <span className="text-sm">Meta: &lt;60min ✅</span>
@@ -235,11 +287,11 @@ export default function CRTPage() {
                                         <CheckCircle className="h-8 w-8 opacity-80" />
                                     </div>
                                     <p className="text-4xl font-bold">
-                                        {formatMinutes(metrics?.avg_resolution_time_7d || 0)}
+                                        {formatMinutes(stats.avgResolutionTime)}
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">Últimos 7 dias</p>
+                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
-                                        {(metrics?.avg_resolution_time_7d || 0) < 240 ? (
+                                        {stats.avgResolutionTime < 240 || stats.avgResolutionTime === 0 ? (
                                             <>
                                                 <ArrowDown className="h-4 w-4" />
                                                 <span className="text-sm">Meta: &lt;4h ✅</span>
@@ -259,11 +311,11 @@ export default function CRTPage() {
                                         <Target className="h-8 w-8 opacity-80" />
                                     </div>
                                     <p className="text-4xl font-bold">
-                                        {Math.round(metrics?.resolution_rate_7d || 0)}%
+                                        {Math.round(stats.resolutionRate)}%
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">Últimos 7 dias</p>
+                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
-                                        {(metrics?.resolution_rate_7d || 0) >= 90 ? (
+                                        {stats.resolutionRate >= 90 ? (
                                             <>
                                                 <TrendingUp className="h-4 w-4" />
                                                 <span className="text-sm">Meta: ≥90% ✅</span>
@@ -283,24 +335,24 @@ export default function CRTPage() {
                                         <Star className="h-8 w-8 opacity-80" />
                                     </div>
                                     <p className="text-4xl font-bold">
-                                        {(metrics?.avg_satisfaction_7d || 0).toFixed(1)}/5
+                                        {stats.avgSatisfaction.toFixed(1)}/5
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">Últimos 7 dias</p>
+                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
-                                        {'★'.repeat(Math.round(metrics?.avg_satisfaction_7d || 0))}
-                                        {'☆'.repeat(5 - Math.round(metrics?.avg_satisfaction_7d || 0))}
+                                        {'★'.repeat(Math.round(stats.avgSatisfaction))}
+                                        {'☆'.repeat(5 - Math.round(stats.avgSatisfaction))}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Today's Performance */}
+                            {/* Period Performance */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                                 <div className="bg-white p-6 rounded-lg shadow">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-gray-600">Issues Hoje</p>
+                                            <p className="text-sm text-gray-600">Issues no Período</p>
                                             <p className="text-3xl font-bold text-gray-900 mt-1">
-                                                {metrics?.issues_today || 0}
+                                                {stats.issuesInPeriod}
                                             </p>
                                         </div>
                                         <AlertTriangle className="h-12 w-12 text-orange-500" />
@@ -310,9 +362,9 @@ export default function CRTPage() {
                                 <div className="bg-white p-6 rounded-lg shadow">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-gray-600">Resolvidos Hoje</p>
+                                            <p className="text-sm text-gray-600">Resolvidos no Período</p>
                                             <p className="text-3xl font-bold text-green-600 mt-1">
-                                                {metrics?.resolved_today || 0}
+                                                {stats.resolvedInPeriod}
                                             </p>
                                         </div>
                                         <CheckCircle className="h-12 w-12 text-green-500" />
@@ -324,7 +376,7 @@ export default function CRTPage() {
                                         <div>
                                             <p className="text-sm text-gray-600">Atualmente Abertos</p>
                                             <p className="text-3xl font-bold text-blue-600 mt-1">
-                                                {metrics?.currently_open || 0}
+                                                {stats.currentlyOpen}
                                             </p>
                                         </div>
                                         <Clock className="h-12 w-12 text-blue-500" />
@@ -336,7 +388,7 @@ export default function CRTPage() {
                                         <div>
                                             <p className="text-sm text-gray-600">Escalados</p>
                                             <p className="text-3xl font-bold text-red-600 mt-1">
-                                                {metrics?.currently_escalated || 0}
+                                                {stats.currentlyEscalated}
                                             </p>
                                         </div>
                                         <Zap className="h-12 w-12 text-red-500" />
@@ -344,37 +396,32 @@ export default function CRTPage() {
                                 </div>
                             </div>
 
-                            {/* Top Issues */}
+                            {/* Top Issues and Goals */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
                                 <div className="bg-white p-6 rounded-lg shadow">
                                     <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                                        📊 Top Tipos de Problemas (30 dias)
+                                        📊 Top Tipos de Problemas ({dateRange.label})
                                     </h3>
-                                    {topIssues.length > 0 ? (
+                                    {stats.topIssues.length > 0 ? (
                                         <div className="space-y-3">
-                                            {topIssues.map((issue, idx) => (
+                                            {stats.topIssues.map((issue, idx) => (
                                                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                                                     <div className="flex-1">
                                                         <p className="font-semibold text-gray-900">{issue.issue_type}</p>
                                                         <p className="text-sm text-gray-600">
-                                                            {issue.occurrences} ocorrências • {formatMinutes(issue.avg_resolution_time)} avg
+                                                            {issue.count} ocorrências
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
                                                         <p className="text-sm font-semibold text-orange-600">
-                                                            {issue.currently_open} abertos
+                                                            {issue.open} abertos
                                                         </p>
-                                                        {issue.avg_satisfaction > 0 && (
-                                                            <p className="text-xs text-gray-500">
-                                                                {issue.avg_satisfaction.toFixed(1)}★
-                                                            </p>
-                                                        )}
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-gray-500 text-center py-8">Nenhum issue registrado ainda</p>
+                                        <p className="text-gray-500 text-center py-8">Nenhum issue registrado no período</p>
                                     )}
                                 </div>
 
@@ -387,17 +434,17 @@ export default function CRTPage() {
                                             <div className="flex justify-between mb-2">
                                                 <span className="text-sm text-gray-600">Tempo de Resposta</span>
                                                 <span className="text-sm font-semibold">
-                                                    {formatMinutes(metrics?.avg_response_time_7d || 0)} / 60min
+                                                    {formatMinutes(stats.avgResponseTime)} / 60min
                                                 </span>
                                             </div>
                                             <div className="w-full bg-gray-200 rounded-full h-3">
                                                 <div
-                                                    className={`h-3 rounded-full ${(metrics?.avg_response_time_7d || 0) <= 60
-                                                            ? 'bg-green-500'
-                                                            : 'bg-red-500'
+                                                    className={`h-3 rounded-full ${stats.avgResponseTime <= 60 || stats.avgResponseTime === 0
+                                                        ? 'bg-green-500'
+                                                        : 'bg-red-500'
                                                         }`}
                                                     style={{
-                                                        width: `${Math.min(((metrics?.avg_response_time_7d || 0) / 60) * 100, 100)}%`,
+                                                        width: `${Math.min((stats.avgResponseTime / 60) * 100, 100)}%`,
                                                     }}
                                                 ></div>
                                             </div>
@@ -407,17 +454,17 @@ export default function CRTPage() {
                                             <div className="flex justify-between mb-2">
                                                 <span className="text-sm text-gray-600">Tempo de Resolução</span>
                                                 <span className="text-sm font-semibold">
-                                                    {formatMinutes(metrics?.avg_resolution_time_7d || 0)} / 4h
+                                                    {formatMinutes(stats.avgResolutionTime)} / 4h
                                                 </span>
                                             </div>
                                             <div className="w-full bg-gray-200 rounded-full h-3">
                                                 <div
-                                                    className={`h-3 rounded-full ${(metrics?.avg_resolution_time_7d || 0) <= 240
-                                                            ? 'bg-green-500'
-                                                            : 'bg-red-500'
+                                                    className={`h-3 rounded-full ${stats.avgResolutionTime <= 240 || stats.avgResolutionTime === 0
+                                                        ? 'bg-green-500'
+                                                        : 'bg-red-500'
                                                         }`}
                                                     style={{
-                                                        width: `${Math.min(((metrics?.avg_resolution_time_7d || 0) / 240) * 100, 100)}%`,
+                                                        width: `${Math.min((stats.avgResolutionTime / 240) * 100, 100)}%`,
                                                     }}
                                                 ></div>
                                             </div>
@@ -427,15 +474,15 @@ export default function CRTPage() {
                                             <div className="flex justify-between mb-2">
                                                 <span className="text-sm text-gray-600">Taxa de Resolução</span>
                                                 <span className="text-sm font-semibold">
-                                                    {Math.round(metrics?.resolution_rate_7d || 0)}% / 90%
+                                                    {Math.round(stats.resolutionRate)}% / 90%
                                                 </span>
                                             </div>
                                             <div className="w-full bg-gray-200 rounded-full h-3">
                                                 <div
-                                                    className={`h-3 rounded-full ${(metrics?.resolution_rate_7d || 0) >= 90 ? 'bg-green-500' : 'bg-orange-500'
+                                                    className={`h-3 rounded-full ${stats.resolutionRate >= 90 ? 'bg-green-500' : 'bg-orange-500'
                                                         }`}
                                                     style={{
-                                                        width: `${Math.min(metrics?.resolution_rate_7d || 0, 100)}%`,
+                                                        width: `${Math.min(stats.resolutionRate, 100)}%`,
                                                     }}
                                                 ></div>
                                             </div>
@@ -474,18 +521,18 @@ export default function CRTPage() {
                                                 >
                                                     <div
                                                         className={`p-2 rounded-lg ${issue.priority === 'critical'
-                                                                ? 'bg-red-100'
-                                                                : issue.priority === 'high'
-                                                                    ? 'bg-orange-100'
-                                                                    : 'bg-yellow-100'
+                                                            ? 'bg-red-100'
+                                                            : issue.priority === 'high'
+                                                                ? 'bg-orange-100'
+                                                                : 'bg-yellow-100'
                                                             }`}
                                                     >
                                                         <AlertTriangle
                                                             className={`h-5 w-5 ${issue.priority === 'critical'
-                                                                    ? 'text-red-600'
-                                                                    : issue.priority === 'high'
-                                                                        ? 'text-orange-600'
-                                                                        : 'text-yellow-600'
+                                                                ? 'text-red-600'
+                                                                : issue.priority === 'high'
+                                                                    ? 'text-orange-600'
+                                                                    : 'text-yellow-600'
                                                                 }`}
                                                         />
                                                     </div>

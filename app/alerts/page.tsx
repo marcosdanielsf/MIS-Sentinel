@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import DateFilter, { DateRange } from '@/components/DateFilter';
 import { AlertTriangle, CheckCircle, Clock, XCircle, TrendingUp, Zap, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Alert {
@@ -46,7 +47,7 @@ const statusColors = {
   dismissed: 'bg-gray-100 text-gray-800',
 };
 
-const typeIcons: Record<string, any> = {
+const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   urgent_request: Clock,
   technical_issue: XCircle,
   automation_opportunity: Zap,
@@ -57,6 +58,11 @@ const typeIcons: Record<string, any> = {
 export default function AlertsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [dateRange, setDateRange] = useState<DateRange>({
+    startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+    endDate: new Date(),
+    label: 'Últimos 7 dias'
+  });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [filteredAlerts, setFilteredAlerts] = useState<Alert[]>([]);
   const [loadingAlerts, setLoadingAlerts] = useState(true);
@@ -70,11 +76,35 @@ export default function AlertsPage() {
     }
   }, [user, loading, router]);
 
+  const fetchAlerts = useCallback(async (range: DateRange) => {
+    try {
+      setLoadingAlerts(true);
+      const { data, error } = await supabase
+        .from('alerts')
+        .select('*')
+        .gte('created_at', range.startDate.toISOString())
+        .lte('created_at', range.endDate.toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching alerts:', error);
+        setAlerts([]);
+      } else {
+        setAlerts(data || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch alerts:', error);
+      setAlerts([]);
+    } finally {
+      setLoadingAlerts(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
-      fetchAlerts();
+      fetchAlerts(dateRange);
     }
-  }, [user]);
+  }, [user, dateRange, fetchAlerts]);
 
   useEffect(() => {
     let filtered = alerts;
@@ -90,26 +120,8 @@ export default function AlertsPage() {
     setFilteredAlerts(filtered);
   }, [filterStatus, filterSeverity, alerts]);
 
-  const fetchAlerts = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('alerts')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching alerts:', error);
-        setAlerts([]);
-      } else {
-        setAlerts(data || []);
-        setFilteredAlerts(data || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch alerts:', error);
-      setAlerts([]);
-    } finally {
-      setLoadingAlerts(false);
-    }
+  const handleDateChange = (range: DateRange) => {
+    setDateRange(range);
   };
 
   const toggleExpand = (alertId: string) => {
@@ -134,7 +146,7 @@ export default function AlertsPage() {
         .eq('id', alertId);
 
       if (!error) {
-        fetchAlerts();
+        fetchAlerts(dateRange);
       }
     } catch (error) {
       console.error('Failed to acknowledge alert:', error);
@@ -153,7 +165,7 @@ export default function AlertsPage() {
         .eq('id', alertId);
 
       if (!error) {
-        fetchAlerts();
+        fetchAlerts(dateRange);
       }
     } catch (error) {
       console.error('Failed to resolve alert:', error);
@@ -198,11 +210,14 @@ export default function AlertsPage() {
 
       <div className="flex-1 overflow-auto">
         <div className="p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">🚨 Alertas do SENTINEL</h1>
-            <p className="mt-2 text-gray-600">
-              Sistema de Inteligência de Alertas - Análise AI em tempo real
-            </p>
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">🚨 Alertas do SENTINEL</h1>
+              <p className="mt-2 text-gray-600">
+                Sistema de Inteligência de Alertas - Análise AI em tempo real
+              </p>
+            </div>
+            <DateFilter onDateChange={handleDateChange} />
           </div>
 
           {/* Stats Cards */}
@@ -210,7 +225,7 @@ export default function AlertsPage() {
             <div className="bg-white p-6 rounded-lg shadow">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total de Alertas</p>
+                  <p className="text-sm text-gray-600">Total no Período</p>
                   <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
                 </div>
                 <AlertCircle className="h-12 w-12 text-blue-500" />
@@ -297,7 +312,7 @@ export default function AlertsPage() {
                 <p className="text-gray-500 mt-2">
                   {filterStatus !== 'all' || filterSeverity !== 'all'
                     ? 'Tente ajustar os filtros'
-                    : 'Sistema funcionando normalmente'}
+                    : 'Sistema funcionando normalmente no período'}
                 </p>
               </div>
             ) : (
@@ -309,9 +324,8 @@ export default function AlertsPage() {
                 return (
                   <div
                     key={alert.id}
-                    className={`bg-white rounded-lg shadow border-l-4 ${
-                      severityColors[alert.severity]
-                    } overflow-hidden`}
+                    className={`bg-white rounded-lg shadow border-l-4 ${severityColors[alert.severity]
+                      } overflow-hidden`}
                   >
                     <div className="p-6">
                       <div className="flex items-start justify-between">

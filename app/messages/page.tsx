@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
+import DateFilter, { DateRange } from '@/components/DateFilter';
 import { Search, MessageSquare, TrendingUp, Zap, Filter } from 'lucide-react';
 
 interface Message {
@@ -41,6 +42,11 @@ const sentimentEmojis: Record<string, string> = {
 export default function MessagesPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
+    const [dateRange, setDateRange] = useState<DateRange>({
+        startDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        endDate: new Date(),
+        label: 'Últimos 7 dias'
+    });
     const [messages, setMessages] = useState<Message[]>([]);
     const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(true);
@@ -49,6 +55,7 @@ export default function MessagesPage() {
     const [filterGroup, setFilterGroup] = useState('all');
     const [filterSentiment, setFilterSentiment] = useState('all');
     const [minUrgency, setMinUrgency] = useState(0);
+    const [messagesPerMinute, setMessagesPerMinute] = useState(0);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -56,11 +63,41 @@ export default function MessagesPage() {
         }
     }, [user, loading, router]);
 
+    const fetchMessages = useCallback(async (range: DateRange) => {
+        try {
+            setLoadingMessages(true);
+            const { data, error } = await supabase
+                .from('messages')
+                .select('*')
+                .gte('created_at', range.startDate.toISOString())
+                .lte('created_at', range.endDate.toISOString())
+                .order('created_at', { ascending: false })
+                .limit(500);
+
+            if (error) {
+                console.error('Error fetching messages:', error);
+                setMessages([]);
+            } else {
+                setMessages(data || []);
+
+                // Calculate messages per minute (last hour)
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const recentMessages = (data || []).filter(m => new Date(m.created_at) >= oneHourAgo);
+                setMessagesPerMinute(recentMessages.length / 60);
+            }
+        } catch (error) {
+            console.error('Failed to fetch messages:', error);
+            setMessages([]);
+        } finally {
+            setLoadingMessages(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (user) {
-            fetchMessages();
+            fetchMessages(dateRange);
         }
-    }, [user]);
+    }, [user, dateRange, fetchMessages]);
 
     useEffect(() => {
         let filtered = messages;
@@ -99,27 +136,8 @@ export default function MessagesPage() {
         setFilteredMessages(filtered);
     }, [searchTerm, filterSender, filterGroup, filterSentiment, minUrgency, messages]);
 
-    const fetchMessages = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('messages')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(200);
-
-            if (error) {
-                console.error('Error fetching messages:', error);
-                setMessages([]);
-            } else {
-                setMessages(data || []);
-                setFilteredMessages(data || []);
-            }
-        } catch (error) {
-            console.error('Failed to fetch messages:', error);
-            setMessages([]);
-        } finally {
-            setLoadingMessages(false);
-        }
+    const handleDateChange = (range: DateRange) => {
+        setDateRange(range);
     };
 
     const formatDate = (dateString: string) => {
@@ -164,11 +182,18 @@ export default function MessagesPage() {
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">💬 Mensagens Monitoradas</h1>
-                        <p className="mt-2 text-gray-600">
-                            Histórico completo de mensagens analisadas pela AI
-                        </p>
+                    <div className="flex items-center justify-between mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold text-gray-900">💬 Mensagens Monitoradas</h1>
+                            <p className="mt-2 text-gray-600">
+                                Histórico completo de mensagens analisadas pela AI
+                            </p>
+                        </div>
+                        <DateFilter
+                            onDateChange={handleDateChange}
+                            showMessagesPerMinute={true}
+                            messagesPerMinute={messagesPerMinute}
+                        />
                     </div>
 
                     {/* Stats Cards */}
@@ -176,7 +201,7 @@ export default function MessagesPage() {
                         <div className="bg-white p-6 rounded-lg shadow">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Total de Mensagens</p>
+                                    <p className="text-sm text-gray-600">Total no Período</p>
                                     <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
                                 </div>
                                 <MessageSquare className="h-12 w-12 text-blue-500" />
@@ -305,12 +330,12 @@ export default function MessagesPage() {
                             <div className="bg-white p-12 rounded-lg shadow text-center">
                                 <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                                 <p className="text-gray-900 font-semibold text-lg">Nenhuma mensagem encontrada</p>
-                                <p className="text-gray-500 mt-2">Tente ajustar os filtros de busca</p>
+                                <p className="text-gray-500 mt-2">Tente ajustar os filtros de busca ou o período</p>
                             </div>
                         ) : (
                             <>
                                 <div className="mb-4 text-sm text-gray-600">
-                                    Mostrando {filteredMessages.length} de {messages.length} mensagens
+                                    Mostrando {filteredMessages.length} de {messages.length} mensagens no período
                                 </div>
 
                                 {filteredMessages.map((message) => {

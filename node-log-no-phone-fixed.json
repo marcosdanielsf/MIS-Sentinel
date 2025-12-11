@@ -1,0 +1,41 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"issue_id\": $json.id,\n  \"action_type\": \"no_phone_available\",\n  \"action_description\": \"⚠️ Cliente sem telefone - AI gerou resposta (\" + $json.response_length + \" chars): \" + $json.ai_response.substring(0, 100) + \"...\",\n  \"taken_by\": \"SYSTEM_AI_AGENT\",\n  \"success\": false\n} }}",
+                "options": {}
+            },
+            "id": "78a274db-76b6-421c-b6ae-588d93f607c1",
+            "name": "HTTP - Log No Phone",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                -1056,
+                1036
+            ]
+        }
+    ],
+    "connections": {},
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "9d65e6caa0e89e696b77790e020391d74468b15f71b3dcdb63aad81f090f5e69"
+    }
+}

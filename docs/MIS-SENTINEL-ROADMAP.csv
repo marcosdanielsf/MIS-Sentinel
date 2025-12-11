@@ -1,0 +1,47 @@
+Priority,Status,Category,Task,Description,Estimate,Impact,Dependencies
+🔥 URGENT,To Do,Infrastructure,Executar SQL do CRT no Supabase,"Executar scripts/add-resolution-tracking.sql no Supabase SQL Editor para criar tabelas issues, issue_actions, views e triggers",5min,CRITICAL,"Sem isso as páginas /crt e /issues não funcionam"
+🔥 URGENT,To Do,Frontend,Criar Página de Settings,Implementar /settings com configurações de usuário (trocar senha, notificações, preferências),2h,HIGH,Autenticação funcionando
+🔥 URGENT,To Do,Database,Popular com Dados de Exemplo,Criar script para gerar dados fake (issues, messages, alerts) para demonstração,30min,HIGH,SQL do CRT executado
+⚡ IMPORTANT,To Do,Automation,Configurar Workflow n8n - Auto-criar Issues,"Importar workflow 1 do docs/N8N-WORKFLOWS.md, configurar para criar issues automaticamente de alertas críticos",3h,HIGH,SQL do CRT executado
+⚡ IMPORTANT,To Do,Automation,Configurar Workflow n8n - Resposta Automática,"Importar workflow 2 do docs/N8N-WORKFLOWS.md, configurar para responder issues em <5min com IA",3h,HIGH,Workflow 1 funcionando
+⚡ IMPORTANT,To Do,Automation,Configurar Workflow n8n - Auto-Resolver,"Importar workflow 3 do docs/N8N-WORKFLOWS.md, configurar para resolver issues automaticamente quando cliente confirmar",3h,MEDIUM,Workflow 2 funcionando
+⚡ IMPORTANT,To Do,Notifications,Sistema de Notificações Slack,Criar notificações no Slack quando issue crítico é criado ou não resolvido em 2h,2h,MEDIUM,Workflow 1 funcionando
+⚡ IMPORTANT,To Do,Notifications,Sistema de Notificações Email,Enviar email para responsável quando issue atribuído ou escalado,2h,MEDIUM,Sistema básico funcionando
+⚡ IMPORTANT,To Do,Reports,Exportação de Relatórios PDF,Implementar exportação de CRT mensal em PDF com gráficos,3h,MEDIUM,Dashboard CRT funcionando
+⚡ IMPORTANT,To Do,Reports,Exportação de Relatórios Excel,Implementar exportação de issues em Excel/CSV,2h,MEDIUM,Dashboard Issues funcionando
+🌟 DESIRABLE,To Do,Admin,Dashboard de Administração,Criar dashboard admin para configurar metas personalizadas (tempo de resposta, taxa de resolução),4h,LOW,Sistema básico funcionando
+🌟 DESIRABLE,To Do,Admin,Gerenciamento de Usuários Avançado,Implementar CRUD completo de usuários com roles (admin, manager, agent),3h,LOW,Página Settings criada
+🌟 DESIRABLE,To Do,Admin,Logs e Auditoria,Sistema de logs de todas ações (quem fez o quê, quando),2h,LOW,Sistema básico funcionando
+🌟 DESIRABLE,To Do,Automation,Auto-Escalação Inteligente,Workflow que escala automaticamente issues sem resposta em 2h para gestor,2h,MEDIUM,Workflows básicos funcionando
+🌟 DESIRABLE,To Do,AI,Fine-tune Modelo Gemini,Treinar modelo Gemini com histórico de resoluções bem-sucedidas para melhorar respostas,8h,MEDIUM,Histórico de 100+ resoluções
+🌟 DESIRABLE,To Do,AI,Auto-Categorização de Issues,IA categoriza automaticamente tipo de issue (customer_complaint, technical, billing, etc),4h,MEDIUM,Fine-tune funcionando
+🌟 DESIRABLE,To Do,AI,Predição de Problemas,Sistema prevê problemas antes de acontecer baseado em padrões históricos,12h,LOW,Dados históricos de 3+ meses
+🌟 DESIRABLE,To Do,AI,Sugestões Automáticas de Resolução,IA sugere ações baseado em resoluções similares anteriores,6h,MEDIUM,Fine-tune funcionando
+🌟 DESIRABLE,To Do,Analytics,Dashboard de Tendências,Gráficos de tendências de CRT ao longo do tempo (melhoria ou piora),4h,LOW,3+ meses de dados
+🌟 DESIRABLE,To Do,Analytics,Heatmap de Issues,Mapa de calor mostrando horários/dias com mais issues,3h,LOW,Dados históricos
+🌟 DESIRABLE,To Do,Integrations,Integração com Jira,Criar tickets no Jira automaticamente para issues críticos,6h,LOW,API Jira configurada
+🌟 DESIRABLE,To Do,Integrations,Integração com Zendesk,Sincronizar issues com tickets Zendesk,6h,LOW,API Zendesk configurada
+🌟 DESIRABLE,To Do,Integrations,Integração com Linear,Criar issues no Linear para tracking técnico,4h,LOW,API Linear configurada
+🌟 DESIRABLE,To Do,Mobile,React Native App - Setup,Configurar projeto React Native com Expo,4h,LOW,Nenhum
+🌟 DESIRABLE,To Do,Mobile,React Native App - Auth,Implementar autenticação no app mobile,3h,LOW,App setup concluído
+🌟 DESIRABLE,To Do,Mobile,React Native App - Dashboard,Dashboard mobile com métricas principais,6h,LOW,Auth funcionando
+🌟 DESIRABLE,To Do,Mobile,React Native App - Push Notifications,Notificações push quando issue crítico,4h,MEDIUM,Dashboard mobile funcionando
+🌟 DESIRABLE,To Do,Mobile,React Native App - Resolver Issues,Interface para resolver issues pelo celular,4h,LOW,Dashboard mobile funcionando
+🌟 DESIRABLE,To Do,Multi-tenant,Arquitetura Multi-tenant,Refatorar para suportar múltiplas empresas isoladas,16h,LOW,Sistema estável em produção
+🌟 DESIRABLE,To Do,Multi-tenant,Admin Multi-tenant,Dashboard para super admin gerenciar múltiplos clientes,8h,LOW,Arquitetura multi-tenant pronta
+✅ DONE,Done,Infrastructure,Deploy Sistema no Vercel,Deploy do dashboard completo em produção,N/A,CRITICAL,Concluído
+✅ DONE,Done,Database,Criar Schema MIS,Criação do schema mottivme_intelligence_system com tabelas messages e alerts,N/A,CRITICAL,Concluído
+✅ DONE,Done,Frontend,Dashboard Principal,Implementação do dashboard com métricas principais,N/A,CRITICAL,Concluído
+✅ DONE,Done,Frontend,Página de Mensagens,Visualização e filtros de mensagens monitoradas,N/A,HIGH,Concluído
+✅ DONE,Done,Frontend,Página de Alertas,Visualização e gerenciamento de alertas SENTINEL,N/A,HIGH,Concluído
+✅ DONE,Done,Frontend,Página de Equipe,Análise de atividade e performance da equipe,N/A,HIGH,Concluído
+✅ DONE,Done,Frontend,Dashboard CRT,Dashboard de Customer Resolution Time com métricas,N/A,CRITICAL,Concluído
+✅ DONE,Done,Frontend,Página de Issues,Gerenciamento completo de issues com tracking,N/A,CRITICAL,Concluído
+✅ DONE,Done,API,API REST - Create Issue,POST /api/issues/create para criar issues via n8n,N/A,HIGH,Concluído
+✅ DONE,Done,API,API REST - Add Action,POST /api/issues/action para registrar ações,N/A,HIGH,Concluído
+✅ DONE,Done,API,API REST - Open Issues,GET /api/issues/open para listar issues abertos,N/A,HIGH,Concluído
+✅ DONE,Done,API,API REST - Resolve Issue,POST /api/issues/resolve para resolver automaticamente,N/A,HIGH,Concluído
+✅ DONE,Done,Documentation,Documentação CRT System,docs/CRT-SYSTEM-IMPLEMENTATION.md completo,N/A,MEDIUM,Concluído
+✅ DONE,Done,Documentation,Documentação n8n Workflows,docs/N8N-WORKFLOWS.md com 3 workflows prontos,N/A,MEDIUM,Concluído
+✅ DONE,Done,Database,Triggers Automáticos,Triggers para auto-calcular métricas e criar issues,N/A,HIGH,Concluído
+✅ DONE,Done,Database,Views de Métricas,Views crt_metrics e top_issues para dashboard,N/A,HIGH,Concluído

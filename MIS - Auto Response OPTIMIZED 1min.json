@@ -1,0 +1,351 @@
+{
+    "name": "MIS - Auto Response OPTIMIZED (1min)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 1
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-optimized-1min",
+            "name": "Schedule - Every 1min ⚡",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/open?priority=critical&limit=50",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "http-get-critical-issues",
+            "name": "HTTP - Get Critical Issues",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair issues do response\nconst response = $input.first().json;\n\nif (!response.success || !response.issues || response.issues.length === 0) {\n  return [];\n}\n\n// Filtrar apenas issues que ainda não tiveram primeira resposta\nconst unrespondedIssues = response.issues.filter(issue => !issue.first_response_at);\n\nif (unrespondedIssues.length === 0) {\n  return [];\n}\n\n// Retornar cada issue como item separado\nreturn unrespondedIssues.map(issue => ({\n  json: issue\n}));"
+            },
+            "id": "code-extract-issues",
+            "name": "Code - Extract Unresponded Issues",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ \"Você é um assistente de suporte da Mottivme. Responda ao seguinte problema do cliente de forma profissional e prestativa.\\n\\nTipo do problema: \" + $json.issue_type + \"\\nPrioridade: \" + $json.priority + \"\\n\\nGere uma resposta que:\\n1. Reconheça o problema\\n2. Explique o que está sendo feito\\n3. Dê um prazo realista\\n4. Ofereça suporte adicional\\n\\nResposta em português do Brasil, máximo 200 palavras.\" }}",
+                "options": {
+                    "systemMessage": "Você é um assistente de suporte técnico da Mottivme, empresa de automação de marketing e vendas. Seja profissional, empático e direto. Foque em resolver o problema do cliente rapidamente."
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
+            "position": [
+                850,
+                300
+            ],
+            "id": "ai-agent-response",
+            "name": "AI Agent - Generate Response"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+                850,
+                480
+            ],
+            "id": "gemini-model",
+            "name": "Google Gemini Chat Model",
+            "credentials": {
+                "googlePalmApi": {
+                    "id": "Id8CEvNKDTHbg6vv",
+                    "name": "gemini marcos"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair a resposta do AI Agent e preparar para envio\nconst agentOutput = $input.first().json;\nconst previousData = $('Code - Extract Unresponded Issues').first().json;\n\nlet aiResponse = '';\n\nif (agentOutput?.output) {\n  aiResponse = agentOutput.output;\n} else if (agentOutput?.text) {\n  aiResponse = agentOutput.text;\n} else {\n  aiResponse = 'Recebemos sua solicitação e estamos trabalhando para resolver. Nossa equipe entrará em contato em breve.';\n}\n\nreturn [{\n  json: {\n    ...previousData,\n    ai_response: aiResponse,\n    ai_model: 'gemini-1.5-flash',\n    response_length: aiResponse.length,\n    response_timestamp: new Date().toISOString()\n  }\n}];"
+            },
+            "id": "code-prepare-response",
+            "name": "Code - Prepare Response Data",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1050,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-has-phone",
+                            "leftValue": "={{ $json.customer_phone }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "notEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "if-has-phone",
+            "name": "Filter - Has Phone",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/whatsapp/send",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"to\": $json.customer_phone,\n  \"message\": $json.ai_response,\n  \"issue_id\": $json.id\n} }}",
+                "options": {}
+            },
+            "id": "http-send-whatsapp",
+            "name": "HTTP - Send WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1450,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"issue_id\": $json.id,\n  \"action_type\": \"automated_response\",\n  \"action_description\": \"✅ AI Agent Response (\" + $json.ai_model + \", \" + $json.response_length + \" chars): \" + $json.ai_response.substring(0, 100) + \"...\",\n  \"taken_by\": \"SYSTEM_AI_AGENT\",\n  \"success\": true\n} }}",
+                "options": {}
+            },
+            "id": "http-log-action",
+            "name": "HTTP - Log Action in CRT",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1650,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"issue_id\": $json.id,\n  \"action_type\": \"no_phone_available\",\n  \"action_description\": \"⚠️ Cliente sem telefone - AI gerou resposta (\" + $json.response_length + \" chars): \" + $json.ai_response.substring(0, 100) + \"...\",\n  \"taken_by\": \"SYSTEM_AI_AGENT\",\n  \"success\": false\n} }}",
+                "options": {}
+            },
+            "id": "http-log-no-phone",
+            "name": "HTTP - Log No Phone Available",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1450,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule - Every 1min ⚡": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Get Critical Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Get Critical Issues": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Extract Unresponded Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Extract Unresponded Issues": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent - Generate Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent - Generate Response": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Prepare Response Data",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Gemini Chat Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent - Generate Response",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Prepare Response Data": {
+            "main": [
+                [
+                    {
+                        "node": "Filter - Has Phone",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter - Has Phone": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Send WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "HTTP - Log No Phone Available",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Send WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Log Action in CRT",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "1.0-optimized",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "mis-sentinel-auto-response-optimized"
+    },
+    "id": "mis-auto-response-optimized-1min",
+    "tags": [
+        "automation",
+        "auto-response",
+        "critical",
+        "ai",
+        "optimized",
+        "1min"
+    ]
+}

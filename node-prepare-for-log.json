@@ -1,0 +1,66 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "jsCode": "// Preparar dados para log no CRT (escapando caracteres especiais)\nconst item = $input.first().json;\n\n// Escapar quebras de linha e aspas na resposta AI\nconst cleanResponse = item.ai_response\n  .replace(/\\n/g, ' ')  // Substituir \\n por espaço\n  .replace(/\\r/g, '')   // Remover \\r\n  .replace(/\"/g, '\\\\\"') // Escapar aspas duplas\n  .substring(0, 100);    // Limitar a 100 chars\n\nreturn [{\n  json: {\n    issue_id: item.id,\n    action_type: 'automated_response',\n    action_description: `✅ AI Agent Response (${item.ai_model}, ${item.response_length} chars): ${cleanResponse}...`,\n    taken_by: 'SYSTEM_AI_AGENT',\n    success: true\n  }\n}];"
+            },
+            "id": "code-prepare-for-log",
+            "name": "Code - Prepare for Log",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1250,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ $json }}",
+                "options": {}
+            },
+            "id": "http-log-action-simple",
+            "name": "HTTP - Log Action in CRT",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1450,
+                200
+            ]
+        }
+    ],
+    "connections": {
+        "Code - Prepare for Log": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Log Action in CRT",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "prepare-and-log-nodes"
+    }
+}

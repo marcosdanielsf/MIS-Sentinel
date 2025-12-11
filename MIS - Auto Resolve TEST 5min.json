@@ -1,0 +1,306 @@
+{
+    "name": "MIS - Auto Resolve TEST (5min)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 2
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-resolve-test",
+            "name": "Schedule - Every 2min (TEST)",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/open?priority=all&limit=50",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "http-get-all-issues",
+            "name": "HTTP - Get All Open Issues",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair issues que já tiveram resposta há mais de 5 MINUTOS (para teste)\nconst response = $input.first().json;\n\nif (!response.success || !response.issues || response.issues.length === 0) {\n  return [];\n}\n\nconst now = new Date();\nconst FIVE_MINUTES_MS = 5 * 60 * 1000; // 5 minutos para teste\n\n// Filtrar issues que:\n// 1. Já receberam primeira resposta (first_response_at não é null)\n// 2. Resposta foi há mais de 5 minutos\n// 3. Ainda não foram resolvidos\nconst eligibleIssues = response.issues.filter(issue => {\n  if (!issue.first_response_at || issue.resolved_at) {\n    return false;\n  }\n  \n  const responseTime = new Date(issue.first_response_at);\n  const timeSinceResponse = now - responseTime;\n  \n  return timeSinceResponse > FIVE_MINUTES_MS;\n});\n\nif (eligibleIssues.length === 0) {\n  return [];\n}\n\n// Retornar cada issue como item separado\nreturn eligibleIssues.map(issue => ({\n  json: {\n    ...issue,\n    time_since_response_hours: Math.floor((now - new Date(issue.first_response_at)) / (60 * 60 * 1000)),\n    time_since_response_minutes: Math.floor((now - new Date(issue.first_response_at)) / (60 * 1000))\n  }\n}));"
+            },
+            "id": "code-filter-eligible",
+            "name": "Code - Filter Eligible (5min TEST)",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ \"Você precisa analisar se este issue pode ser auto-resolvido.\\n\\nIssue ID: \" + $json.id + \"\\nTipo: \" + $json.issue_type + \"\\nCliente: \" + ($json.customer_name || 'Não identificado') + \"\\nPrioridade: \" + $json.priority + \"\\nDetectado: \" + $json.detected_at + \"\\nPrimeira resposta: \" + $json.first_response_at + \"\\nMinutos desde resposta: \" + $json.time_since_response_minutes + \"min\\n\\n🧪 MODO TESTE (5min ao invés de 2h)\\n\\nCritérios para AUTO-RESOLVER:\\n1. Cliente não respondeu após 5+ minutos (teste)\\n2. Tipo de issue é resolvível automaticamente\\n3. Prioridade não é critical\\n\\nResponda APENAS:\\n- SIM (pode auto-resolver)\\n- NÃO (precisa acompanhamento humano)\" }}",
+                "options": {
+                    "systemMessage": "Você é um assistente de triagem da Mottivme em MODO TESTE.\n\nANALISE SE O ISSUE PODE SER AUTO-RESOLVIDO:\n\n✅ AUTO-RESOLVER SE:\n- Tempo sem resposta >5min (teste)\n- Tipo não é crítico/urgente\n- Prioridade medium ou low\n\n❌ NÃO AUTO-RESOLVER SE:\n- Prioridade critical\n- Tipo requer acompanhamento\n- Issue técnico ou complexo\n\nResponda APENAS 'SIM' ou 'NÃO'."
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
+            "position": [
+                850,
+                300
+            ],
+            "id": "ai-agent-triage",
+            "name": "AI Agent - Triage"
+        },
+        {
+            "parameters": {
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1,
+            "position": [
+                850,
+                480
+            ],
+            "id": "gemini-model-triage",
+            "name": "Google Gemini Chat Model",
+            "credentials": {
+                "googlePalmApi": {
+                    "id": "Id8CEvNKDTHbg6vv",
+                    "name": "gemini marcos"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair decisão do AI Agent\nconst agentOutput = $input.first().json;\nconst previousData = $('Code - Filter Eligible (5min TEST)').first().json;\n\nlet decision = 'NÃO';\n\nif (agentOutput?.output) {\n  const output = agentOutput.output.toUpperCase();\n  decision = output.includes('SIM') ? 'SIM' : 'NÃO';\n} else if (agentOutput?.text) {\n  const text = agentOutput.text.toUpperCase();\n  decision = text.includes('SIM') ? 'SIM' : 'NÃO';\n}\n\nreturn [{\n  json: {\n    ...previousData,\n    ai_decision: decision,\n    can_auto_resolve: decision === 'SIM'\n  }\n}];"
+            },
+            "id": "code-extract-decision",
+            "name": "Code - Extract Decision",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1050,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-can-resolve",
+                            "leftValue": "={{ $json.can_auto_resolve }}",
+                            "rightValue": true,
+                            "operator": {
+                                "type": "boolean",
+                                "operation": "equals"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                },
+                "options": {}
+            },
+            "id": "if-can-resolve",
+            "name": "Filter - Can Auto Resolve",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/resolve",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"issue_id\": $json.id,\n  \"resolution_notes\": \"🧪 TESTE: Auto-resolvido após \" + $json.time_since_response_minutes + \"min sem resposta do cliente. Sistema considerou issue resolvido.\",\n  \"customer_satisfaction\": 3,\n  \"resolved_by\": \"SYSTEM_AUTO_RESOLVE_TEST\"\n} }}",
+                "options": {}
+            },
+            "id": "http-resolve-issue",
+            "name": "HTTP - Resolve Issue",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1450,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ {\n  \"issue_id\": $json.id,\n  \"action_type\": \"escalation_needed\",\n  \"action_description\": \"⚠️ TESTE: Issue NÃO pode ser auto-resolvido após \" + $json.time_since_response_minutes + \"min. Requer acompanhamento humano. Prioridade: \" + $json.priority,\n  \"taken_by\": \"SYSTEM_AUTO_TRIAGE_TEST\",\n  \"success\": false\n} }}",
+                "options": {}
+            },
+            "id": "http-log-escalation",
+            "name": "HTTP - Log Escalation Needed",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1450,
+                400
+            ]
+        }
+    ],
+    "connections": {
+        "Schedule - Every 2min (TEST)": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Get All Open Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Get All Open Issues": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Filter Eligible (5min TEST)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Filter Eligible (5min TEST)": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent - Triage",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent - Triage": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Extract Decision",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Gemini Chat Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent - Triage",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Extract Decision": {
+            "main": [
+                [
+                    {
+                        "node": "Filter - Can Auto Resolve",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter - Can Auto Resolve": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Resolve Issue",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "HTTP - Log Escalation Needed",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "TEST-5min",
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "mis-sentinel-auto-resolve-test"
+    },
+    "id": "mis-auto-resolve-test-5min",
+    "tags": [
+        "test",
+        "auto-resolve",
+        "5min"
+    ]
+}

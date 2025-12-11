@@ -1,0 +1,359 @@
+{
+    "name": "MIS - Auto Response DIRECT (No AI Agent)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 5
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger-001",
+            "name": "Schedule - Every 5min",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/open?priority=critical&limit=10",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "http-get-issues-001",
+            "name": "HTTP - Get Open Critical Issues",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair array de issues do response\nconst response = $input.first().json;\n\nif (!response.success || !response.issues || response.issues.length === 0) {\n  return [];\n}\n\n// Retornar cada issue como item separado\nreturn response.issues.map(issue => ({\n  json: issue\n}));"
+            },
+            "id": "code-extract-issues-001",
+            "name": "Code - Extract Issues Array",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Preparar prompt para Gemini\nconst issue = $input.first().json;\n\nconst metadata = typeof issue.metadata === 'string' \n  ? JSON.parse(issue.metadata) \n  : (issue.metadata || {});\n\nconst systemPrompt = `Você é um assistente da Mottivme. Gere uma resposta BREVE e PROFISSIONAL para este problema:\n\nCliente: ${issue.customer_name || 'Não identificado'}\nTipo: ${issue.issue_type}\nPrioridade: ${issue.priority}\nDetectado: ${new Date(issue.detected_at).toLocaleString('pt-BR')}\n\nREGRAS:\n- Máximo 3 linhas\n- Seja empático e direto\n- Ofereça solução concreta\n- Tom profissional mas humanizado\n- Sem saudações formais\n- Será enviado via WhatsApp\n\nRESPOSTA:`;\n\nreturn [{\n  json: {\n    ...issue,\n    gemini_prompt: systemPrompt\n  }\n}];"
+            },
+            "id": "code-prepare-prompt-001",
+            "name": "Code - Prepare Prompt",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                850,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "authentication": "genericCredentialType",
+                "genericAuthType": "httpHeaderAuth",
+                "method": "POST",
+                "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [{\n      \"text\": {{ JSON.stringify($json.gemini_prompt) }}\n    }]\n  }],\n  \"generationConfig\": {\n    \"temperature\": 0.7,\n    \"maxOutputTokens\": 300,\n    \"topP\": 0.9\n  }\n}",
+                "options": {}
+            },
+            "id": "http-gemini-001",
+            "name": "HTTP - Google Gemini",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1050,
+                300
+            ],
+            "credentials": {
+                "httpHeaderAuth": {
+                    "id": "Id8CEvNKDTHbg6vv",
+                    "name": "gemini marcos"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair resposta do Gemini\nconst geminiResponse = $input.first().json;\nconst previousData = $('Code - Prepare Prompt').first().json;\n\nlet aiResponse = 'Desculpe, não conseguimos processar sua solicitação. Nossa equipe entrará em contato em breve.';\n\n// Extrair texto da resposta Gemini\nif (geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text) {\n  aiResponse = geminiResponse.candidates[0].content.parts[0].text.trim();\n}\n\n// Limitar tamanho\nif (aiResponse.length > 500) {\n  aiResponse = aiResponse.substring(0, 497) + '...';\n}\n\nreturn [{\n  json: {\n    ...previousData,\n    ai_response: aiResponse,\n    ai_model: 'gemini-1.5-flash',\n    response_generated_at: new Date().toISOString(),\n    response_length: aiResponse.length\n  }\n}];"
+            },
+            "id": "code-extract-response-001",
+            "name": "Code - Extract Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-phone-001",
+                            "leftValue": "={{ $json.customer_phone }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "isNotEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                }
+            },
+            "id": "if-has-phone-001",
+            "name": "Filter - Has Phone",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://SUA-EVOLUTION-API.com/message/sendText",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "SEU_TOKEN_EVOLUTION_AQUI"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"number\": {{ JSON.stringify($json.customer_phone) }},\n  \"text\": {{ JSON.stringify($json.ai_response) }}\n}",
+                "options": {}
+            },
+            "id": "http-send-whatsapp-001",
+            "name": "HTTP - Send WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1650,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"issue_id\": {{ JSON.stringify($json.id) }},\n  \"action_type\": \"automated_response\",\n  \"action_description\": \"✅ AI Response (\" + {{ JSON.stringify($json.ai_model) }} + \", \" + $json.response_length + \" chars): \" + {{ JSON.stringify($json.ai_response.substring(0, 100)) }} + \"...\",\n  \"taken_by\": \"SYSTEM_AI\",\n  \"success\": true\n}",
+                "options": {}
+            },
+            "id": "http-log-action-001",
+            "name": "HTTP - Log Action in CRT",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1850,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"issue_id\": {{ JSON.stringify($json.id) }},\n  \"action_type\": \"no_phone_available\",\n  \"action_description\": \"⚠️ Sem telefone - AI gerou resposta (\" + $json.response_length + \" chars): \" + {{ JSON.stringify($json.ai_response.substring(0, 100)) }} + \"...\",\n  \"taken_by\": \"SYSTEM_AI\",\n  \"success\": false\n}",
+                "options": {}
+            },
+            "id": "http-log-no-phone-001",
+            "name": "HTTP - Log No Phone",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1650,
+                400
+            ]
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Schedule - Every 5min": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Get Open Critical Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Get Open Critical Issues": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Extract Issues Array",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Extract Issues Array": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Prepare Prompt",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Prepare Prompt": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Google Gemini",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Google Gemini": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Extract Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Extract Response": {
+            "main": [
+                [
+                    {
+                        "node": "Filter - Has Phone",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter - Has Phone": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Send WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "HTTP - Log No Phone",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Send WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Log Action in CRT",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "4.0",
+    "meta": {
+        "instanceId": "mis-sentinel-direct-working"
+    },
+    "id": "mis-auto-response-direct",
+    "tags": [
+        "simple",
+        "working",
+        "direct",
+        "no-agent"
+    ]
+}

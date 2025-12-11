@@ -1,0 +1,442 @@
+{
+    "name": "MIS - Auto Response AI Agent (CORRECTED)",
+    "nodes": [
+        {
+            "parameters": {
+                "rule": {
+                    "interval": [
+                        {
+                            "field": "minutes",
+                            "minutesInterval": 5
+                        }
+                    ]
+                }
+            },
+            "id": "schedule-trigger-001",
+            "name": "Schedule - Every 5min",
+            "type": "n8n-nodes-base.scheduleTrigger",
+            "typeVersion": 1.1,
+            "position": [
+                250,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/open?priority=critical&limit=10",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "id": "http-get-issues-001",
+            "name": "HTTP - Get Open Critical Issues",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                450,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-001",
+                            "leftValue": "={{ $json.issues ? $json.issues.length : 0 }}",
+                            "rightValue": 0,
+                            "operator": {
+                                "type": "number",
+                                "operation": "gt"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                }
+            },
+            "id": "if-has-issues-001",
+            "name": "Filter - Has Issues",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                650,
+                300
+            ]
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "issues",
+                "options": {}
+            },
+            "id": "split-in-batches-001",
+            "name": "Split Issues",
+            "type": "n8n-nodes-base.splitInBatches",
+            "typeVersion": 3,
+            "position": [
+                850,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "jsCode": "// Preparar contexto do issue para o AI Agent\nconst issue = $input.first().json;\n\nconst metadata = typeof issue.metadata === 'string' \n  ? JSON.parse(issue.metadata) \n  : (issue.metadata || {});\n\n// Criar contexto estruturado para o agente\nconst issueContext = {\n  id: issue.id,\n  tipo: issue.issue_type,\n  cliente: issue.customer_name || 'Não identificado',\n  telefone: issue.customer_phone || 'Não informado',\n  prioridade: issue.priority,\n  detectado_em: new Date(issue.detected_at).toLocaleString('pt-BR'),\n  mensagem_preview: metadata?.message_preview || null,\n  sentimento: metadata?.sentiment || null,\n  keywords: metadata?.keywords || [],\n  analise_time: metadata?.team_analysis || null\n};\n\nreturn [{\n  json: {\n    ...issue,\n    issue_context: issueContext,\n    chat_input: `Você precisa gerar uma resposta profissional para este problema crítico:\n\n${JSON.stringify(issueContext, null, 2)}\n\nGere uma resposta empática, profissional e objetiva que será enviada via WhatsApp ao cliente.`\n  }\n}];"
+            },
+            "id": "code-prepare-context-001",
+            "name": "Code - Prepare Context",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1050,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "={{ $json.chat_input }}",
+                "options": {
+                    "systemMessage": "Você é um assistente inteligente da Mottivme especializado em atendimento ao cliente.\n\nSUA MISSÃO:\nGerar respostas profissionais, empáticas e objetivas para problemas críticos de clientes.\n\nDIRETRIZES:\n1. Seja breve e direto (máximo 3 parágrafos)\n2. Mostre empatia genuína\n3. Ofereça soluções concretas e imediatas\n4. Use tom profissional mas humanizado\n5. Para problemas técnicos: forneça passo-a-passo claro\n6. Para reclamações: assuma responsabilidade e comprometa-se\n7. Inclua próximos passos claros\n8. A mensagem será enviada via WhatsApp, seja cordial\n\nFORMATO DA RESPOSTA:\n- Não inclua saudações formais (Prezado, etc)\n- Vá direto ao ponto\n- Use quebras de linha para melhor leitura\n- Não use markdown ou formatação especial\n- Máximo 500 caracteres"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
+            "position": [
+                1250,
+                200
+            ],
+            "id": "ai-agent-001",
+            "name": "AI Agent",
+            "credentials": {}
+        },
+        {
+            "parameters": {
+                "model": "gemini-1.5-flash",
+                "options": {
+                    "temperature": 0.7,
+                    "maxOutputTokens": 500
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+            "typeVersion": 1.1,
+            "position": [
+                1250,
+                380
+            ],
+            "id": "gemini-model-001",
+            "name": "Google Gemini Model",
+            "credentials": {
+                "googleGeminiOAuth2Api": {
+                    "id": "YOUR_GEMINI_CREDENTIAL_ID",
+                    "name": "Google Gemini API"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Extrair resposta do AI Agent\nconst agentOutput = $input.first().json;\nconst previousData = $('Code - Prepare Context').first().json;\n\nlet aiResponse = 'Desculpe, não conseguimos gerar uma resposta automática. Nossa equipe entrará em contato em breve.';\n\n// O AI Agent retorna a resposta no campo 'output'\nif (agentOutput?.output) {\n  aiResponse = agentOutput.output.trim();\n} else if (agentOutput?.text) {\n  aiResponse = agentOutput.text.trim();\n} else if (agentOutput?.response) {\n  aiResponse = agentOutput.response.trim();\n}\n\n// Garantir que não ultrapasse 500 caracteres (limite WhatsApp friendly)\nif (aiResponse.length > 500) {\n  aiResponse = aiResponse.substring(0, 497) + '...';\n}\n\nreturn [{\n  json: {\n    ...previousData,\n    ai_response: aiResponse,\n    ai_model: 'gemini-1.5-flash-agent',\n    response_generated_at: new Date().toISOString(),\n    response_length: aiResponse.length\n  }\n}];"
+            },
+            "id": "code-extract-response-001",
+            "name": "Code - Extract AI Response",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1450,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "conditions": {
+                    "options": {
+                        "caseSensitive": true,
+                        "leftValue": "",
+                        "typeValidation": "strict"
+                    },
+                    "conditions": [
+                        {
+                            "id": "condition-phone-001",
+                            "leftValue": "={{ $json.customer_phone }}",
+                            "rightValue": "",
+                            "operator": {
+                                "type": "string",
+                                "operation": "isNotEmpty"
+                            }
+                        }
+                    ],
+                    "combinator": "and"
+                }
+            },
+            "id": "if-has-phone-001",
+            "name": "Filter - Has Phone",
+            "type": "n8n-nodes-base.if",
+            "typeVersion": 2,
+            "position": [
+                1650,
+                200
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://SUA-EVOLUTION-API.com/message/sendText",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "apikey",
+                            "value": "SEU_TOKEN_EVOLUTION_AQUI"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"number\": {{ JSON.stringify($json.customer_phone) }},\n  \"text\": {{ JSON.stringify($json.ai_response) }}\n}",
+                "options": {}
+            },
+            "id": "http-send-whatsapp-001",
+            "name": "HTTP - Send WhatsApp",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1850,
+                100
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"issue_id\": {{ JSON.stringify($json.id) }},\n  \"action_type\": \"automated_response\",\n  \"action_description\": \"✅ AI Agent Response (\" + {{ JSON.stringify($json.ai_model) }} + \", \" + {{ JSON.stringify($json.response_length) }} + \" chars): \" + {{ JSON.stringify($json.ai_response.substring(0, 100)) }} + \"...\",\n  \"taken_by\": \"SYSTEM_AI_AGENT\",\n  \"success\": true\n}",
+                "options": {}
+            },
+            "id": "http-log-action-001",
+            "name": "HTTP - Log Action in CRT",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2050,
+                100
+            ]
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"issue_id\": {{ JSON.stringify($json.id) }},\n  \"action_type\": \"no_phone_available\",\n  \"action_description\": \"⚠️ Cliente sem telefone - AI Agent gerou resposta mas não foi enviada (\" + {{ JSON.stringify($json.response_length) }} + \" chars): \" + {{ JSON.stringify($json.ai_response.substring(0, 100)) }} + \"...\",\n  \"taken_by\": \"SYSTEM_AI_AGENT\",\n  \"success\": false\n}",
+                "options": {}
+            },
+            "id": "http-log-no-phone-001",
+            "name": "HTTP - Log No Phone",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1850,
+                300
+            ]
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Schedule - Every 5min": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Get Open Critical Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Get Open Critical Issues": {
+            "main": [
+                [
+                    {
+                        "node": "Filter - Has Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter - Has Issues": {
+            "main": [
+                [
+                    {
+                        "node": "Split Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Issues": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Prepare Context",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Prepare Context": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent": {
+            "main": [
+                [
+                    {
+                        "node": "Code - Extract AI Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Google Gemini Model": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code - Extract AI Response": {
+            "main": [
+                [
+                    {
+                        "node": "Filter - Has Phone",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Filter - Has Phone": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Send WhatsApp",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "HTTP - Log No Phone",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Send WhatsApp": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP - Log Action in CRT",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Log Action in CRT": {
+            "main": [
+                [
+                    {
+                        "node": "Split Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "HTTP - Log No Phone": {
+            "main": [
+                [
+                    {
+                        "node": "Split Issues",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": false,
+    "settings": {
+        "executionOrder": "v1"
+    },
+    "versionId": "2.1",
+    "meta": {
+        "instanceId": "mis-sentinel-ai-agent-corrected"
+    },
+    "id": "mis-auto-response-ai-agent-corrected",
+    "tags": [
+        "ai-agent",
+        "automation",
+        "crt",
+        "customer-service",
+        "gemini"
+    ]
+}

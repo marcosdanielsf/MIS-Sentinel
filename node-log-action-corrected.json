@@ -1,0 +1,41 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://admin-dashboard-6pr21y8gx-marcosdanielsfs-projects.vercel.app/api/issues/action",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "x-vercel-protection-bypass",
+                            "value": "k0YEgeZz2JylRDNETMuJKnk4SpUWTaeH"
+                        },
+                        {
+                            "name": "Content-Type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"issue_id\": {{ JSON.stringify($json.id) }},\n  \"action_type\": \"automated_response\",\n  \"action_description\": \"✅ AI Agent Response (\" + {{ JSON.stringify($json.ai_model) }} + \", \" + $json.response_length + \" chars): \" + {{ JSON.stringify($json.ai_response.substring(0, 100)) }} + \"...\",\n  \"taken_by\": \"SYSTEM_AI_AGENT\",\n  \"success\": true\n}",
+                "options": {}
+            },
+            "id": "http-log-action-corrected",
+            "name": "HTTP - Log Action in CRT (CORRECTED)",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                1650,
+                200
+            ]
+        }
+    ],
+    "connections": {},
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "corrected-log-action-node"
+    }
+}

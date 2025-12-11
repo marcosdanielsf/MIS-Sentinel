@@ -9,7 +9,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function GET(request: NextRequest) {
     try {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+            db: { schema: 'mottivme_intelligence_system' }
+        });
 
         const { searchParams } = new URL(request.url);
         const priority = searchParams.get('priority'); // Filter by priority

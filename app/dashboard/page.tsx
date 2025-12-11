@@ -18,11 +18,15 @@ interface DashboardStats {
     totalAlerts: number;
     activeAlerts: number;
     criticalAlerts: number;
+    totalIssues: number;
+    openIssues: number;
+    highPriorityIssues: number;
     teamMembers: number;
     avgUrgency: number;
     sentimentBreakdown: { name: string; value: number }[];
     messagesOverTime: { name: string; mensagens: number }[];
     recentAlerts: any[];
+    recentIssues: any[];
     messagesPerMinute: number;
 }
 
@@ -39,11 +43,15 @@ export default function DashboardPage() {
         totalAlerts: 0,
         activeAlerts: 0,
         criticalAlerts: 0,
+        totalIssues: 0,
+        openIssues: 0,
+        highPriorityIssues: 0,
         teamMembers: 0,
         avgUrgency: 0,
         sentimentBreakdown: [],
         messagesOverTime: [],
         recentAlerts: [],
+        recentIssues: [],
         messagesPerMinute: 0,
     });
     const [loadingStats, setLoadingStats] = useState(true);
@@ -72,10 +80,22 @@ export default function DashboardPage() {
                 .gte('created_at', range.startDate.toISOString())
                 .lte('created_at', range.endDate.toISOString());
 
+            // Fetch issues within date range
+            const { data: issues } = await supabase
+                .from('issues')
+                .select('*')
+                .gte('detected_at', range.startDate.toISOString())
+                .lte('detected_at', range.endDate.toISOString());
+
             const totalMessages = messages?.length || 0;
             const totalAlerts = alerts?.length || 0;
             const activeAlerts = alerts?.filter(a => a.status === 'active').length || 0;
             const criticalAlerts = alerts?.filter(a => a.severity === 'critical' && a.status === 'active').length || 0;
+
+            // Issues stats
+            const totalIssues = issues?.length || 0;
+            const openIssues = issues?.filter(i => i.status === 'open' || i.status === 'in_progress').length || 0;
+            const highPriorityIssues = issues?.filter(i => (i.priority === 'high' || i.priority === 'critical') && i.status !== 'resolved' && i.status !== 'closed').length || 0;
 
             // Calculate messages per minute (based on last hour)
             const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -124,16 +144,26 @@ export default function DashboardPage() {
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                 .slice(0, 5) || [];
 
+            // Recent issues (last 5 open)
+            const recentIssues = issues
+                ?.filter(i => i.status === 'open' || i.status === 'in_progress')
+                .sort((a, b) => new Date(b.detected_at).getTime() - new Date(a.detected_at).getTime())
+                .slice(0, 5) || [];
+
             setStats({
                 totalMessages,
                 totalAlerts,
                 activeAlerts,
                 criticalAlerts,
+                totalIssues,
+                openIssues,
+                highPriorityIssues,
                 teamMembers,
                 avgUrgency,
                 sentimentBreakdown,
                 messagesOverTime,
                 recentAlerts,
+                recentIssues,
                 messagesPerMinute,
             });
         } catch (error) {
@@ -214,18 +244,18 @@ export default function DashboardPage() {
                                     trend={{ value: 12, isPositive: true }}
                                 />
                                 <StatsCard
-                                    title="Alertas Ativos"
-                                    value={stats.activeAlerts}
+                                    title="Issues Abertos"
+                                    value={stats.openIssues}
                                     icon={AlertTriangle}
                                     color="orange"
-                                    trend={{ value: stats.activeAlerts, isPositive: false }}
+                                    trend={{ value: stats.openIssues, isPositive: false }}
                                 />
                                 <StatsCard
-                                    title="Alertas Críticos"
-                                    value={stats.criticalAlerts}
+                                    title="Issues Alta Prioridade"
+                                    value={stats.highPriorityIssues}
                                     icon={Zap}
                                     color="red"
-                                    trend={{ value: stats.criticalAlerts, isPositive: false }}
+                                    trend={{ value: stats.highPriorityIssues, isPositive: false }}
                                 />
                                 <StatsCard
                                     title="Membros da Equipe"
@@ -298,10 +328,10 @@ export default function DashboardPage() {
                                 </div>
 
                                 <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg shadow text-white">
-                                    <h4 className="text-sm font-semibold mb-2">Total de Alertas</h4>
-                                    <p className="text-4xl font-bold">{stats.totalAlerts}</p>
+                                    <h4 className="text-sm font-semibold mb-2">Total de Issues</h4>
+                                    <p className="text-4xl font-bold">{stats.totalIssues}</p>
                                     <p className="text-sm mt-2 opacity-90">
-                                        {stats.activeAlerts} ativos · {stats.totalAlerts - stats.activeAlerts} resolvidos
+                                        {stats.openIssues} abertos · {stats.totalIssues - stats.openIssues} resolvidos
                                     </p>
                                 </div>
 
@@ -312,57 +342,62 @@ export default function DashboardPage() {
                                 </div>
                             </div>
 
-                            {/* Recent Alerts */}
+                            {/* Recent Issues */}
                             <div className="bg-white rounded-lg shadow">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="text-lg font-semibold text-gray-900">
-                                            🚨 Alertas Recentes
+                                            🎯 Issues Abertos - Ação Necessária
                                         </h3>
                                         <Link
-                                            href="/alerts"
+                                            href="/issues"
                                             className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
                                         >
                                             Ver todos →
                                         </Link>
                                     </div>
 
-                                    {stats.recentAlerts.length === 0 ? (
+                                    {stats.recentIssues.length === 0 ? (
                                         <div className="text-center py-8 text-gray-500">
                                             <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                                            <p>Nenhum alerta ativo no momento</p>
-                                            <p className="text-sm mt-1">Sistema funcionando normalmente</p>
+                                            <p>Nenhum issue aberto no momento</p>
+                                            <p className="text-sm mt-1">Todos os problemas foram resolvidos 🎉</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
-                                            {stats.recentAlerts.map((alert) => (
-                                                <div key={alert.id} className="flex items-start gap-4 py-3 border-b last:border-b-0">
-                                                    <div className={`p-2 rounded-lg ${alert.severity === 'critical' ? 'bg-red-100' :
-                                                            alert.severity === 'high' ? 'bg-orange-100' :
-                                                                alert.severity === 'medium' ? 'bg-yellow-100' :
+                                            {stats.recentIssues.map((issue) => (
+                                                <div key={issue.id} className="flex items-start gap-4 py-3 border-b last:border-b-0">
+                                                    <div className={`p-2 rounded-lg ${issue.priority === 'critical' ? 'bg-red-100' :
+                                                            issue.priority === 'high' ? 'bg-orange-100' :
+                                                                issue.priority === 'medium' ? 'bg-yellow-100' :
                                                                     'bg-blue-100'
                                                         }`}>
-                                                        <AlertTriangle className={`h-5 w-5 ${alert.severity === 'critical' ? 'text-red-600' :
-                                                                alert.severity === 'high' ? 'text-orange-600' :
-                                                                    alert.severity === 'medium' ? 'text-yellow-600' :
+                                                        <AlertTriangle className={`h-5 w-5 ${issue.priority === 'critical' ? 'text-red-600' :
+                                                                issue.priority === 'high' ? 'text-orange-600' :
+                                                                    issue.priority === 'medium' ? 'text-yellow-600' :
                                                                         'text-blue-600'
                                                             }`} />
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-semibold text-gray-900">{alert.title}</p>
-                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${alert.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                                                                    alert.severity === 'high' ? 'bg-orange-100 text-orange-800' :
-                                                                        alert.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                                            <p className="font-semibold text-gray-900">{issue.issue_type}</p>
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${issue.priority === 'critical' ? 'bg-red-100 text-red-800' :
+                                                                    issue.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                                                        issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                                                                             'bg-blue-100 text-blue-800'
                                                                 }`}>
-                                                                {alert.severity}
+                                                                {issue.priority}
+                                                            </span>
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${issue.status === 'open' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                                {issue.status}
                                                             </span>
                                                         </div>
-                                                        <p className="text-sm text-gray-600">{alert.description}</p>
+                                                        <p className="text-sm text-gray-600">
+                                                            {issue.customer_name ? `Cliente: ${issue.customer_name}` : 'Cliente: N/A'}
+                                                        </p>
                                                     </div>
                                                     <span className="text-xs text-gray-400 whitespace-nowrap">
-                                                        {formatDate(alert.created_at)}
+                                                        {formatDate(issue.detected_at)}
                                                     </span>
                                                 </div>
                                             ))}

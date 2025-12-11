@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Settings, LogOut, AlertTriangle, MessageSquare, Activity, Timer } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, AlertTriangle, MessageSquare, Activity, Timer, BookOpen, GitBranch, TrendingUp, Heart, Target } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 const menuItems = [
@@ -17,6 +17,11 @@ const menuItems = [
         icon: Timer,
     },
     {
+        name: 'Issues',
+        href: '/issues',
+        icon: Target,
+    },
+    {
         name: 'Alertas SENTINEL',
         href: '/alerts',
         icon: AlertTriangle,
@@ -25,6 +30,26 @@ const menuItems = [
         name: 'Mensagens',
         href: '/messages',
         icon: MessageSquare,
+    },
+    {
+        name: 'Knowledge Base',
+        href: '/knowledge',
+        icon: BookOpen,
+    },
+    {
+        name: 'Processos',
+        href: '/processes',
+        icon: GitBranch,
+    },
+    {
+        name: 'Comercial (BDR)',
+        href: '/sales',
+        icon: TrendingUp,
+    },
+    {
+        name: 'CS - Engajamento',
+        href: '/engagement',
+        icon: Heart,
     },
     {
         name: 'Atividade da Equipe',

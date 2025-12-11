@@ -20,61 +20,37 @@
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "issues",
-          "mode": "list"
-        },
-        "returnAll": false,
-        "limit": 100,
-        "filterType": "string",
-        "filterString": "detected_at >= NOW() - INTERVAL '7 days'"
+        "operation": "executeQuery",
+        "query": "SELECT id, issue_type, status, severity, priority, detected_at, resolved_at, customer_id, description\nFROM mottivme_intelligence_system.issues\nWHERE detected_at >= NOW() - INTERVAL '7 days'\nORDER BY detected_at DESC\nLIMIT 100",
+        "options": {}
       },
       "id": "get-recent-issues",
       "name": "Get Recent Issues (7 days)",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [450, 200],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "messages",
-          "mode": "list"
-        },
-        "returnAll": false,
-        "limit": 200,
-        "filterType": "string",
-        "filterString": "created_at >= NOW() - INTERVAL '7 days'"
+        "operation": "executeQuery",
+        "query": "SELECT id, content, sentiment, urgency_score, sender_name, direction, created_at\nFROM mottivme_intelligence_system.messages\nWHERE created_at >= NOW() - INTERVAL '7 days'\nORDER BY created_at DESC\nLIMIT 200",
+        "options": {}
       },
       "id": "get-recent-messages",
       "name": "Get Recent Messages (7 days)",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [450, 400],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
@@ -92,7 +68,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Aggregate data for analysis\nconst items = $input.all();\n\n// Separate issues and messages\nconst issues = items.filter(i => i.json.issue_type !== undefined);\nconst messages = items.filter(i => i.json.content !== undefined && i.json.issue_type === undefined);\n\n// Count issues by type\nconst issuesByType = {};\nissues.forEach(i => {\n  const type = i.json.issue_type || 'unknown';\n  if (!issuesByType[type]) {\n    issuesByType[type] = { count: 0, resolved: 0, avgResolutionTime: [] };\n  }\n  issuesByType[type].count++;\n  if (i.json.status === 'resolved' || i.json.status === 'closed') {\n    issuesByType[type].resolved++;\n    if (i.json.resolved_at && i.json.detected_at) {\n      const resTime = new Date(i.json.resolved_at) - new Date(i.json.detected_at);\n      issuesByType[type].avgResolutionTime.push(resTime / (1000 * 60)); // minutes\n    }\n  }\n});\n\n// Calculate averages\nObject.keys(issuesByType).forEach(type => {\n  const times = issuesByType[type].avgResolutionTime;\n  issuesByType[type].avgResolutionMinutes = times.length > 0 \n    ? times.reduce((a, b) => a + b, 0) / times.length \n    : 0;\n  delete issuesByType[type].avgResolutionTime;\n});\n\n// Identify patterns in messages\nconst messagePatterns = {};\nmessages.forEach(m => {\n  const sentiment = m.json.sentiment || 'neutral';\n  const urgency = m.json.urgency_score || 0;\n  if (!messagePatterns[sentiment]) {\n    messagePatterns[sentiment] = { count: 0, avgUrgency: 0, totalUrgency: 0 };\n  }\n  messagePatterns[sentiment].count++;\n  messagePatterns[sentiment].totalUrgency += urgency;\n});\n\nObject.keys(messagePatterns).forEach(s => {\n  messagePatterns[s].avgUrgency = messagePatterns[s].totalUrgency / messagePatterns[s].count;\n  delete messagePatterns[s].totalUrgency;\n});\n\nreturn [{\n  json: {\n    totalIssues: issues.length,\n    totalMessages: messages.length,\n    issuesByType,\n    messagePatterns,\n    period: '7_days',\n    analyzedAt: new Date().toISOString()\n  }\n}];"
+        "jsCode": "// Aggregate data for analysis\nconst items = $input.all();\n\n// Separate issues and messages\nconst issues = items.filter(i => i.json.issue_type !== undefined);\nconst messages = items.filter(i => i.json.content !== undefined && i.json.issue_type === undefined);\n\n// Count issues by type\nconst issuesByType = {};\nissues.forEach(i => {\n  const type = i.json.issue_type || 'unknown';\n  if (!issuesByType[type]) {\n    issuesByType[type] = { count: 0, resolved: 0, avgResolutionTime: [] };\n  }\n  issuesByType[type].count++;\n  if (i.json.status === 'resolved' || i.json.status === 'closed') {\n    issuesByType[type].resolved++;\n    if (i.json.resolved_at && i.json.detected_at) {\n      const resTime = new Date(i.json.resolved_at) - new Date(i.json.detected_at);\n      issuesByType[type].avgResolutionTime.push(resTime / (1000 * 60)); // minutes\n    }\n  }\n});\n\n// Calculate averages\nObject.keys(issuesByType).forEach(type => {\n  const times = issuesByType[type].avgResolutionTime;\n  issuesByType[type].avgResolutionMinutes = times.length > 0 \n    ? times.reduce((a, b) => a + b, 0) / times.length \n    : 0;\n  delete issuesByType[type].avgResolutionTime;\n});\n\n// Identify patterns in messages\nconst messagePatterns = {};\nmessages.forEach(m => {\n  const sentiment = m.json.sentiment || 'neutral';\n  const urgency = m.json.urgency_score || 0;\n  if (!messagePatterns[sentiment]) {\n    messagePatterns[sentiment] = { count: 0, avgUrgency: 0, totalUrgency: 0 };\n  }\n  messagePatterns[sentiment].count++;\n  messagePatterns[sentiment].totalUrgency += urgency;\n});\n\nObject.keys(messagePatterns).forEach(s => {\n  messagePatterns[s].avgUrgency = messagePatterns[s].totalUrgency / messagePatterns[s].count;\n  delete messagePatterns[s].totalUrgency;\n});\n\nconst prompt = `Analise estes dados dos últimos 7 dias e identifique gargalos, atualizações de processos e oportunidades de automação:\n\nTotal de Issues: ${issues.length}\nTotal de Mensagens: ${messages.length}\n\nIssues por Tipo:\n${JSON.stringify(issuesByType, null, 2)}\n\nPadrões de Mensagens:\n${JSON.stringify(messagePatterns, null, 2)}\n\nResponda APENAS com JSON válido, sem markdown, sem explicações.`;\n\nreturn [{\n  json: {\n    prompt,\n    totalIssues: issues.length,\n    totalMessages: messages.length,\n    issuesByType,\n    messagePatterns,\n    period: '7_days',\n    analyzedAt: new Date().toISOString()\n  }\n}];"
       },
       "id": "aggregate-data",
       "name": "Aggregate Data for Analysis",
@@ -102,39 +78,39 @@
     },
     {
       "parameters": {
-        "model": "llama-3.3-70b-versatile",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Você é o SENTINEL Process Agent. Sua função é analisar padrões de issues e mensagens para:\n\n1. IDENTIFICAR GARGALOS:\n   - Tipos de issues mais frequentes\n   - Issues com maior tempo de resolução\n   - Padrões de reclamações\n\n2. SUGERIR PROCESSOS:\n   - Criar ou atualizar mapas de processo\n   - Documentar fluxos de resolução\n   - Identificar responsáveis\n\n3. IDENTIFICAR OPORTUNIDADES DE AUTOMAÇÃO:\n   - Tarefas repetitivas\n   - Respostas padrão\n   - Fluxos que podem ser automatizados\n\nResponda em JSON com a estrutura:\n{\n  \"bottlenecks\": [\n    {\n      \"issue_type\": \"string\",\n      \"severity\": \"high|medium|low\",\n      \"description\": \"string\",\n      \"suggested_action\": \"string\"\n    }\n  ],\n  \"process_updates\": [\n    {\n      \"process_name\": \"string\",\n      \"category\": \"atendimento|vendas|financeiro|suporte|onboarding|cancelamento\",\n      \"description\": \"string\",\n      \"steps\": [{\"order\": 1, \"name\": \"string\", \"description\": \"string\", \"responsible\": \"string\", \"avg_time_minutes\": 0}],\n      \"bottlenecks\": [\"string\"],\n      \"optimization_suggestions\": [\"string\"]\n    }\n  ],\n  \"automation_opportunities\": [\n    {\n      \"description\": \"string\",\n      \"estimated_time_saved_hours\": 0,\n      \"implementation_complexity\": \"low|medium|high\",\n      \"priority_score\": 0\n    }\n  ]\n}"
-            },
-            {
-              "role": "user",
-              "content": "=Analise estes dados dos últimos 7 dias e identifique gargalos, atualizações de processos e oportunidades de automação:\n\nTotal de Issues: {{ $json.totalIssues }}\nTotal de Mensagens: {{ $json.totalMessages }}\n\nIssues por Tipo:\n{{ JSON.stringify($json.issuesByType, null, 2) }}\n\nPadrões de Mensagens:\n{{ JSON.stringify($json.messagePatterns, null, 2) }}"
-            }
-          ]
-        },
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "hasOutputParser": true,
         "options": {
-          "temperature": 0.4,
-          "maxTokens": 2000
+          "systemMessage": "# IDENTIDADE E MISSÃO\n\nVocê é o SENTINEL Process Agent. Sua função é analisar padrões de issues e mensagens para:\n\n1. IDENTIFICAR GARGALOS:\n   - Tipos de issues mais frequentes\n   - Issues com maior tempo de resolução\n   - Padrões de reclamações\n\n2. SUGERIR PROCESSOS:\n   - Criar ou atualizar mapas de processo\n   - Documentar fluxos de resolução\n   - Identificar responsáveis\n\n3. IDENTIFICAR OPORTUNIDADES DE AUTOMAÇÃO:\n   - Tarefas repetitivas\n   - Respostas padrão\n   - Fluxos que podem ser automatizados\n\n# OUTPUT\n\nResponda SEMPRE em JSON válido SEM markdown, SEM ```json```:\n{\n  \"bottlenecks\": [\n    {\n      \"issue_type\": \"string\",\n      \"severity\": \"high|medium|low\",\n      \"description\": \"string\",\n      \"suggested_action\": \"string\"\n    }\n  ],\n  \"process_updates\": [\n    {\n      \"process_name\": \"string\",\n      \"category\": \"atendimento|vendas|financeiro|suporte|onboarding|cancelamento\",\n      \"description\": \"string\",\n      \"steps\": [{\"order\": 1, \"name\": \"string\", \"description\": \"string\", \"responsible\": \"string\", \"avg_time_minutes\": 0}],\n      \"bottlenecks\": [\"string\"],\n      \"optimization_suggestions\": [\"string\"]\n    }\n  ],\n  \"automation_opportunities\": [\n    {\n      \"description\": \"string\",\n      \"estimated_time_saved_hours\": 0,\n      \"implementation_complexity\": \"low|medium|high\",\n      \"priority_score\": 0\n    }\n  ]\n}"
         }
       },
       "id": "process-analyzer",
-      "name": "Analyze with Groq LLaMA",
+      "name": "Process Analysis Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "id": "groq-model",
+      "name": "Groq Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
       "typeVersion": 1,
-      "position": [1050, 300],
+      "position": [1050, 500],
       "credentials": {
         "groqApi": {
-          "id": "GROQ_CREDENTIALS_ID",
-          "name": "Groq API"
+          "id": "WVbQ0d3w6cnLwPtX",
+          "name": "Groq account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Parse the AI response\nconst aiResponse = $input.first().json;\n\nlet parsed;\ntry {\n  const content = aiResponse.text || aiResponse.content || JSON.stringify(aiResponse);\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;\n} catch (e) {\n  console.error('Parse error:', e);\n  parsed = { bottlenecks: [], process_updates: [], automation_opportunities: [] };\n}\n\nconst results = [];\n\n// Process updates\nif (parsed.process_updates && parsed.process_updates.length > 0) {\n  parsed.process_updates.forEach(p => {\n    results.push({\n      json: {\n        type: 'process',\n        data: {\n          process_name: p.process_name,\n          category: p.category,\n          description: p.description,\n          steps: JSON.stringify(p.steps || []),\n          bottlenecks: JSON.stringify(p.bottlenecks || []),\n          optimization_suggestions: JSON.stringify(p.optimization_suggestions || []),\n          avg_resolution_time: 0,\n          success_rate: 0,\n          status: 'draft'\n        }\n      }\n    });\n  });\n}\n\n// Automation opportunities\nif (parsed.automation_opportunities && parsed.automation_opportunities.length > 0) {\n  parsed.automation_opportunities.forEach(a => {\n    results.push({\n      json: {\n        type: 'automation',\n        data: {\n          opportunity_description: a.description,\n          estimated_time_saved_hours: a.estimated_time_saved_hours || 0,\n          implementation_complexity: a.implementation_complexity || 'medium',\n          priority_score: a.priority_score || 5,\n          status: 'identified'\n        }\n      }\n    });\n  });\n}\n\n// Store bottlenecks as insights\nif (parsed.bottlenecks && parsed.bottlenecks.length > 0) {\n  parsed.bottlenecks.forEach(b => {\n    results.push({\n      json: {\n        type: 'insight',\n        data: {\n          insight_type: 'bottleneck',\n          content: `${b.issue_type}: ${b.description}. Ação sugerida: ${b.suggested_action}`,\n          confidence_score: b.severity === 'high' ? 0.9 : b.severity === 'medium' ? 0.7 : 0.5,\n          metadata: JSON.stringify({ severity: b.severity }),\n          processed_for_kb: false\n        }\n      }\n    });\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { type: 'none', skip: true } }];"
+        "jsCode": "// Parse the AI response\nconst aiResponse = $input.first().json;\n\nlet parsed;\ntry {\n  const content = aiResponse.output || aiResponse.text || aiResponse.content || JSON.stringify(aiResponse);\n  \n  // Remove markdown if present\n  let cleanContent = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  const jsonMatch = cleanContent.match(/\\{[\\s\\S]*\\}/);\n  parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;\n} catch (e) {\n  console.error('Parse error:', e);\n  parsed = { bottlenecks: [], process_updates: [], automation_opportunities: [] };\n}\n\nconst results = [];\n\n// Process updates\nif (parsed.process_updates && parsed.process_updates.length > 0) {\n  parsed.process_updates.forEach(p => {\n    results.push({\n      json: {\n        type: 'process',\n        data: {\n          process_name: p.process_name,\n          category: p.category,\n          description: p.description,\n          steps: JSON.stringify(p.steps || []),\n          bottlenecks: JSON.stringify(p.bottlenecks || []),\n          optimization_suggestions: JSON.stringify(p.optimization_suggestions || []),\n          avg_resolution_time: 0,\n          success_rate: 0,\n          status: 'draft'\n        }\n      }\n    });\n  });\n}\n\n// Automation opportunities\nif (parsed.automation_opportunities && parsed.automation_opportunities.length > 0) {\n  parsed.automation_opportunities.forEach(a => {\n    results.push({\n      json: {\n        type: 'automation',\n        data: {\n          opportunity_description: a.description,\n          estimated_time_saved_hours: a.estimated_time_saved_hours || 0,\n          implementation_complexity: a.implementation_complexity || 'medium',\n          priority_score: a.priority_score || 5,\n          status: 'identified'\n        }\n      }\n    });\n  });\n}\n\n// Store bottlenecks as insights\nif (parsed.bottlenecks && parsed.bottlenecks.length > 0) {\n  parsed.bottlenecks.forEach(b => {\n    results.push({\n      json: {\n        type: 'insight',\n        data: {\n          insight_type: 'bottleneck',\n          content: `${b.issue_type}: ${b.description}. Ação sugerida: ${b.suggested_action}`,\n          confidence_score: b.severity === 'high' ? 0.9 : b.severity === 'medium' ? 0.7 : 0.5,\n          metadata: JSON.stringify({ severity: b.severity }),\n          processed_for_kb: false\n        }\n      }\n    });\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { type: 'none', skip: true } }];"
       },
       "id": "parse-analysis",
       "name": "Parse Analysis Results",
@@ -144,169 +120,132 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
+        "rules": {
+          "values": [
             {
-              "value1": "={{ $json.type }}",
-              "operation": "equals",
-              "value2": "process"
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "process",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "process"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "automation",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "automation"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.type }}",
+                    "rightValue": "insight",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "insight"
             }
           ]
-        }
+        },
+        "options": {}
       },
       "id": "route-by-type",
       "name": "Route by Type",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [1450, 300],
-      "onFallback": "continueRegularOutput"
+      "position": [1450, 300]
     },
     {
       "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "process_maps",
-          "mode": "list"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "process_name": "={{ $json.data.process_name }}",
-            "category": "={{ $json.data.category }}",
-            "description": "={{ $json.data.description }}",
-            "steps": "={{ $json.data.steps }}",
-            "bottlenecks": "={{ $json.data.bottlenecks }}",
-            "optimization_suggestions": "={{ $json.data.optimization_suggestions }}",
-            "status": "={{ $json.data.status }}"
-          }
-        },
-        "options": {
-          "onConflict": "ignore"
-        }
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.process_maps (process_name, category, description, steps, bottlenecks, optimization_suggestions, status)\nVALUES (\n  '{{ $json.data.process_name }}',\n  '{{ $json.data.category }}',\n  '{{ $json.data.description }}',\n  '{{ $json.data.steps }}'::jsonb,\n  '{{ $json.data.bottlenecks }}'::jsonb,\n  '{{ $json.data.optimization_suggestions }}'::jsonb,\n  '{{ $json.data.status }}'\n)\nON CONFLICT DO NOTHING\nRETURNING id",
+        "options": {}
       },
       "id": "insert-process",
       "name": "Insert Process Map",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [1700, 150],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.type }}",
-              "operation": "equals",
-              "value2": "automation"
-            }
-          ]
-        }
-      },
-      "id": "check-automation",
-      "name": "Is Automation?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1700, 300]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "automation_opportunities",
-          "mode": "list"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "opportunity_description": "={{ $json.data.opportunity_description }}",
-            "estimated_time_saved_hours": "={{ $json.data.estimated_time_saved_hours }}",
-            "implementation_complexity": "={{ $json.data.implementation_complexity }}",
-            "priority_score": "={{ $json.data.priority_score }}",
-            "status": "={{ $json.data.status }}"
-          }
-        }
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.automation_opportunities (opportunity_description, estimated_time_saved_hours, implementation_complexity, priority_score, status)\nVALUES (\n  '{{ $json.data.opportunity_description }}',\n  {{ $json.data.estimated_time_saved_hours }},\n  '{{ $json.data.implementation_complexity }}',\n  {{ $json.data.priority_score }},\n  '{{ $json.data.status }}'\n)\nRETURNING id",
+        "options": {}
       },
       "id": "insert-automation",
       "name": "Insert Automation Opportunity",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [1950, 250],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1700, 300],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
       "parameters": {
-        "conditions": {
-          "string": [
-            {
-              "value1": "={{ $json.type }}",
-              "operation": "equals",
-              "value2": "insight"
-            }
-          ]
-        }
-      },
-      "id": "check-insight",
-      "name": "Is Insight?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
-      "position": [1950, 400]
-    },
-    {
-      "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "sentinel_insights",
-          "mode": "list"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "insight_type": "={{ $json.data.insight_type }}",
-            "content": "={{ $json.data.content }}",
-            "confidence_score": "={{ $json.data.confidence_score }}",
-            "metadata": "={{ $json.data.metadata }}",
-            "processed_for_kb": false
-          }
-        }
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.sentinel_insights (insight_type, content, confidence_score, metadata, processed_for_kb)\nVALUES (\n  '{{ $json.data.insight_type }}',\n  '{{ $json.data.content }}',\n  {{ $json.data.confidence_score }},\n  '{{ $json.data.metadata }}'::jsonb,\n  false\n)\nRETURNING id",
+        "options": {}
       },
       "id": "insert-insight",
       "name": "Insert Insight",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [2200, 350],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1700, 450],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     }
@@ -365,14 +304,25 @@
       "main": [
         [
           {
-            "node": "Analyze with Groq LLaMA",
+            "node": "Process Analysis Agent",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Analyze with Groq LLaMA": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Process Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Analysis Agent": {
       "main": [
         [
           {
@@ -405,33 +355,11 @@
         ],
         [
           {
-            "node": "Check Automation?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Check Automation?": {
-      "main": [
-        [
-          {
             "node": "Insert Automation Opportunity",
             "type": "main",
             "index": 0
           }
         ],
-        [
-          {
-            "node": "Is Insight?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Is Insight?": {
-      "main": [
         [
           {
             "node": "Insert Insight",
@@ -451,6 +379,9 @@
   "tags": [
     {
       "name": "SENTINEL"
+    },
+    {
+      "name": "Process"
     }
   ]
 }

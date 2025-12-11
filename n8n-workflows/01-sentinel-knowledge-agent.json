@@ -20,31 +20,19 @@
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "sentinel_insights",
-          "mode": "list"
-        },
-        "returnAll": false,
-        "limit": 50,
-        "filterType": "string",
-        "filterString": "processed_for_kb = false AND insight_type IN ('pattern', 'solution', 'recommendation')"
+        "operation": "executeQuery",
+        "query": "SELECT id, insight_type, content, confidence_score, metadata, created_at\nFROM mottivme_intelligence_system.sentinel_insights\nWHERE processed_for_kb = false\n  AND insight_type IN ('pattern', 'solution', 'recommendation')\nORDER BY created_at DESC\nLIMIT 50",
+        "options": {}
       },
       "id": "get-unprocessed-insights",
       "name": "Get Unprocessed Insights",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [450, 300],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
@@ -61,45 +49,55 @@
     },
     {
       "parameters": {
-        "model": "llama-3.3-70b-versatile",
-        "messages": {
-          "values": [
-            {
-              "role": "system",
-              "content": "Você é o SENTINEL Knowledge Agent. Sua função é transformar insights de análise de mensagens em entradas de Knowledge Base estruturadas.\n\nPara cada insight, você deve:\n1. Determinar a categoria: 'faq', 'solution', 'process', 'best_practice'\n2. Criar um título claro e objetivo\n3. Criar um conteúdo detalhado e útil\n4. Extrair tags relevantes\n5. Determinar a prioridade (1-5)\n\nResponda SEMPRE em JSON válido com a estrutura:\n{\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"Título claro\",\n  \"content\": \"Conteúdo detalhado...\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"priority\": 3,\n  \"should_create\": true,\n  \"reason\": \"Motivo da decisão\"\n}\n\nSe o insight não for relevante para a Knowledge Base, retorne should_create: false"
-            },
-            {
-              "role": "user",
-              "content": "=Transforme este insight em uma entrada de Knowledge Base:\n\nTipo: {{ $json.insight_type }}\nConteúdo: {{ $json.content }}\nConfiança: {{ $json.confidence_score }}\nContexto: {{ $json.metadata }}"
-            }
-          ]
-        },
+        "jsCode": "// Prepare prompt for agent\nconst item = $input.first().json;\n\nconst prompt = `Transforme este insight em uma entrada de Knowledge Base:\n\nTipo: ${item.insight_type || 'unknown'}\nConteúdo: ${item.content || ''}\nConfiança: ${item.confidence_score || 0}\nContexto: ${JSON.stringify(item.metadata || {})}\n\nResponda APENAS com JSON válido, sem markdown, sem explicações:\n{\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"Título claro\",\n  \"content\": \"Conteúdo detalhado...\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"priority\": 3,\n  \"should_create\": true,\n  \"reason\": \"Motivo da decisão\"\n}`;\n\nreturn [{\n  json: {\n    prompt: prompt,\n    insight_id: item.id,\n    original_content: item.content\n  }\n}];"
+      },
+      "id": "prepare-prompt",
+      "name": "Prepare Agent Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "hasOutputParser": true,
         "options": {
-          "temperature": 0.3,
-          "maxTokens": 1000
+          "systemMessage": "# IDENTIDADE E MISSÃO\n\nVocê é o SENTINEL Knowledge Agent. Sua função é transformar insights de análise de mensagens em entradas de Knowledge Base estruturadas.\n\n# REGRAS\n\n1. Determine a categoria: 'faq', 'solution', 'process', 'best_practice'\n2. Crie um título claro e objetivo (max 100 chars)\n3. Crie um conteúdo detalhado e útil\n4. Extraia tags relevantes (3-5 tags)\n5. Determine a prioridade (1-5, sendo 5 mais importante)\n\n# OUTPUT\n\nResponda SEMPRE em JSON válido SEM markdown, SEM ```json```:\n{\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"Título claro\",\n  \"content\": \"Conteúdo detalhado...\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"priority\": 3,\n  \"should_create\": true,\n  \"reason\": \"Motivo da decisão\"\n}\n\nSe o insight não for relevante para a Knowledge Base, retorne should_create: false"
         }
       },
-      "id": "knowledge-processor",
-      "name": "Process with Groq LLaMA",
+      "id": "knowledge-agent",
+      "name": "Knowledge Analysis Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "id": "groq-model",
+      "name": "Groq Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
       "typeVersion": 1,
-      "position": [850, 300],
+      "position": [1050, 500],
       "credentials": {
         "groqApi": {
-          "id": "GROQ_CREDENTIALS_ID",
-          "name": "Groq API"
+          "id": "WVbQ0d3w6cnLwPtX",
+          "name": "Groq account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Parse the AI response\nconst aiResponse = $input.first().json;\nconst originalInsight = $('Process One by One').first().json;\n\nlet parsed;\ntry {\n  // Extract JSON from response\n  const content = aiResponse.text || aiResponse.content || JSON.stringify(aiResponse);\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;\n} catch (e) {\n  parsed = null;\n}\n\nif (!parsed || !parsed.should_create) {\n  return [{\n    json: {\n      skip: true,\n      insight_id: originalInsight.id,\n      reason: parsed?.reason || 'Could not parse or not relevant'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    skip: false,\n    insight_id: originalInsight.id,\n    knowledge_entry: {\n      category: parsed.category,\n      title: parsed.title,\n      content: parsed.content,\n      tags: parsed.tags || [],\n      priority: parsed.priority || 3,\n      source: 'sentinel_ai',\n      source_insight_id: originalInsight.id,\n      status: 'published',\n      helpful_count: 0,\n      not_helpful_count: 0\n    }\n  }\n}];"
+        "jsCode": "// Parse the AI response\nconst aiResponse = $input.first().json;\nconst preparedData = $('Prepare Agent Prompt').first().json;\n\nlet parsed;\ntry {\n  // Try to get output from agent\n  const content = aiResponse.output || aiResponse.text || aiResponse.content || JSON.stringify(aiResponse);\n  \n  // Remove markdown code blocks if present\n  let cleanContent = content.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n  \n  // Find JSON in the response\n  const jsonMatch = cleanContent.match(/\\{[\\s\\S]*\\}/);\n  parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;\n} catch (e) {\n  parsed = null;\n}\n\nif (!parsed || !parsed.should_create) {\n  return [{\n    json: {\n      skip: true,\n      insight_id: preparedData.insight_id,\n      reason: parsed?.reason || 'Could not parse or not relevant'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    skip: false,\n    insight_id: preparedData.insight_id,\n    knowledge_entry: {\n      category: parsed.category,\n      title: parsed.title,\n      content: parsed.content,\n      tags: parsed.tags || [],\n      priority: parsed.priority || 3,\n      source: 'sentinel_ai',\n      source_insight_id: preparedData.insight_id,\n      status: 'published'\n    }\n  }\n}];"
       },
       "id": "parse-response",
       "name": "Parse AI Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1050, 300]
+      "position": [1250, 300]
     },
     {
       "parameters": {
@@ -128,95 +126,61 @@
       "name": "Should Create Entry?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [1250, 300]
+      "position": [1450, 300]
     },
     {
       "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "knowledge_base",
-          "mode": "list"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "category": "={{ $json.knowledge_entry.category }}",
-            "title": "={{ $json.knowledge_entry.title }}",
-            "content": "={{ $json.knowledge_entry.content }}",
-            "tags": "={{ $json.knowledge_entry.tags }}",
-            "priority": "={{ $json.knowledge_entry.priority }}",
-            "source": "={{ $json.knowledge_entry.source }}",
-            "status": "={{ $json.knowledge_entry.status }}",
-            "helpful_count": 0,
-            "not_helpful_count": 0
-          }
-        }
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.knowledge_base (category, title, content, tags, priority, source, source_insight_id, status, helpful_count, not_helpful_count)\nVALUES (\n  '{{ $json.knowledge_entry.category }}',\n  '{{ $json.knowledge_entry.title }}',\n  '{{ $json.knowledge_entry.content }}',\n  ARRAY[{{ $json.knowledge_entry.tags.map(t => \"'\" + t + \"'\").join(',') }}]::text[],\n  {{ $json.knowledge_entry.priority }},\n  '{{ $json.knowledge_entry.source }}',\n  '{{ $json.knowledge_entry.source_insight_id }}'::uuid,\n  '{{ $json.knowledge_entry.status }}',\n  0,\n  0\n)\nRETURNING id",
+        "options": {}
       },
       "id": "insert-knowledge",
       "name": "Insert to Knowledge Base",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [1450, 200],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1650, 200],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
       "parameters": {
-        "operation": "update",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "sentinel_insights",
-          "mode": "list"
-        },
-        "filtersUI": {
-          "filterValues": [
-            {
-              "fieldName": "id",
-              "fieldValue": "={{ $json.insight_id }}"
-            }
-          ]
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "processed_for_kb": true
-          }
-        }
+        "operation": "executeQuery",
+        "query": "UPDATE mottivme_intelligence_system.sentinel_insights\nSET processed_for_kb = true, updated_at = NOW()\nWHERE id = '{{ $json.insight_id }}'::uuid",
+        "options": {}
       },
       "id": "mark-processed",
       "name": "Mark Insight as Processed",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
-      "position": [1650, 300],
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1850, 300],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
-      "parameters": {},
-      "id": "loop-back",
-      "name": "Continue Loop",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [1850, 300]
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE mottivme_intelligence_system.sentinel_insights\nSET processed_for_kb = true, updated_at = NOW()\nWHERE id = '{{ $json.insight_id }}'::uuid",
+        "options": {}
+      },
+      "id": "mark-processed-skipped",
+      "name": "Mark Skipped as Processed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1650, 400],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
     }
   ],
   "connections": {
@@ -246,21 +210,36 @@
       "main": [
         [
           {
-            "node": "Process with Groq LLaMA",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Continue Loop",
+            "node": "Prepare Agent Prompt",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Process with Groq LLaMA": {
+    "Prepare Agent Prompt": {
+      "main": [
+        [
+          {
+            "node": "Knowledge Analysis Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Knowledge Analysis Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledge Analysis Agent": {
       "main": [
         [
           {
@@ -293,7 +272,7 @@
         ],
         [
           {
-            "node": "Mark Insight as Processed",
+            "node": "Mark Skipped as Processed",
             "type": "main",
             "index": 0
           }
@@ -321,6 +300,17 @@
           }
         ]
       ]
+    },
+    "Mark Skipped as Processed": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -332,9 +322,10 @@
   },
   "tags": [
     {
-      "name": "SENTINEL",
-      "createdAt": "2024-01-01T00:00:00.000Z",
-      "updatedAt": "2024-01-01T00:00:00.000Z"
+      "name": "SENTINEL"
+    },
+    {
+      "name": "Knowledge"
     }
   ]
 }

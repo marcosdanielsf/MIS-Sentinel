@@ -33,59 +33,37 @@
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "messages",
-          "mode": "list"
-        },
-        "returnAll": true,
-        "filterType": "string",
-        "filterString": "created_at >= CURRENT_DATE AND created_at < CURRENT_DATE + INTERVAL '1 day'"
+        "operation": "executeQuery",
+        "query": "SELECT id, content, sender_name, direction, is_outbound, message_type, category, is_first_contact, created_at\nFROM mottivme_intelligence_system.messages\nWHERE created_at >= CURRENT_DATE\n  AND created_at < CURRENT_DATE + INTERVAL '1 day'\nORDER BY created_at",
+        "options": {}
       },
       "id": "get-today-messages",
       "name": "Get Today's Messages",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [500, 300],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
       "parameters": {
-        "operation": "select",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "team_members",
-          "mode": "list"
-        },
-        "returnAll": true,
-        "filterType": "string",
-        "filterString": "role IN ('bdr', 'sdr', 'sales')"
+        "operation": "executeQuery",
+        "query": "SELECT id, name, username, role\nFROM mottivme_intelligence_system.team_members\nWHERE role IN ('bdr', 'sdr', 'sales')",
+        "options": {}
       },
       "id": "get-sales-team",
       "name": "Get Sales Team Members",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [500, 500],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
@@ -142,49 +120,25 @@
     },
     {
       "parameters": {
-        "operation": "upsert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "sales_metrics",
-          "mode": "list"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "team_member": "={{ $json.team_member }}",
-            "date": "={{ $json.date }}",
-            "prospections_count": "={{ $json.prospections_count }}",
-            "contacts_made": "={{ $json.contacts_made }}",
-            "meetings_scheduled": "={{ $json.meetings_scheduled }}",
-            "proposals_sent": "={{ $json.proposals_sent }}",
-            "deals_closed": "={{ $json.deals_closed }}",
-            "avg_time_between_prospections": "={{ $json.avg_time_between_prospections }}",
-            "total_prospection_time_minutes": "={{ $json.total_prospection_time_minutes }}",
-            "conversion_rate": "={{ $json.conversion_rate }}"
-          }
-        },
-        "conflictColumns": ["team_member", "date"]
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.sales_metrics (\n  team_member,\n  date,\n  prospections_count,\n  contacts_made,\n  meetings_scheduled,\n  proposals_sent,\n  deals_closed,\n  avg_time_between_prospections,\n  total_prospection_time_minutes,\n  conversion_rate\n)\nVALUES (\n  '{{ $json.team_member }}',\n  '{{ $json.date }}'::date,\n  {{ $json.prospections_count }},\n  {{ $json.contacts_made }},\n  {{ $json.meetings_scheduled }},\n  {{ $json.proposals_sent }},\n  {{ $json.deals_closed }},\n  {{ $json.avg_time_between_prospections }},\n  {{ $json.total_prospection_time_minutes }},\n  {{ $json.conversion_rate }}\n)\nON CONFLICT (team_member, date) DO UPDATE SET\n  prospections_count = EXCLUDED.prospections_count,\n  contacts_made = EXCLUDED.contacts_made,\n  meetings_scheduled = EXCLUDED.meetings_scheduled,\n  proposals_sent = EXCLUDED.proposals_sent,\n  deals_closed = EXCLUDED.deals_closed,\n  avg_time_between_prospections = EXCLUDED.avg_time_between_prospections,\n  total_prospection_time_minutes = EXCLUDED.total_prospection_time_minutes,\n  conversion_rate = EXCLUDED.conversion_rate,\n  updated_at = NOW()\nRETURNING id",
+        "options": {}
       },
       "id": "upsert-metrics",
       "name": "Upsert Sales Metrics",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [1300, 350],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "// Generate daily summary insight\nconst metrics = $input.all();\n\nconst totalProspections = metrics.reduce((sum, m) => sum + (m.json.prospections_count || 0), 0);\nconst totalContacts = metrics.reduce((sum, m) => sum + (m.json.contacts_made || 0), 0);\nconst totalMeetings = metrics.reduce((sum, m) => sum + (m.json.meetings_scheduled || 0), 0);\nconst avgConversion = metrics.reduce((sum, m) => sum + (m.json.conversion_rate || 0), 0) / metrics.length;\n\nconst topPerformer = metrics.sort((a, b) => b.json.prospections_count - a.json.prospections_count)[0];\n\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    insight_type: 'daily_sales_summary',\n    content: `Resumo de Vendas ${today}: ${totalProspections} prospecções, ${totalContacts} contatos, ${totalMeetings} reuniões agendadas. Top performer: ${topPerformer?.json.team_member || 'N/A'} com ${topPerformer?.json.prospections_count || 0} prospecções. Taxa média de conversão: ${avgConversion.toFixed(1)}%`,\n    confidence_score: 1.0,\n    metadata: JSON.stringify({\n      date: today,\n      team_size: metrics.length,\n      total_prospections: totalProspections,\n      total_contacts: totalContacts,\n      total_meetings: totalMeetings,\n      avg_conversion: avgConversion\n    }),\n    processed_for_kb: true\n  }\n}];"
+        "jsCode": "// Generate daily summary insight\nconst metrics = $input.all();\n\nconst totalProspections = metrics.reduce((sum, m) => sum + (m.json.prospections_count || 0), 0);\nconst totalContacts = metrics.reduce((sum, m) => sum + (m.json.contacts_made || 0), 0);\nconst totalMeetings = metrics.reduce((sum, m) => sum + (m.json.meetings_scheduled || 0), 0);\nconst avgConversion = metrics.length > 0 \n  ? metrics.reduce((sum, m) => sum + (m.json.conversion_rate || 0), 0) / metrics.length \n  : 0;\n\nconst topPerformer = metrics.sort((a, b) => b.json.prospections_count - a.json.prospections_count)[0];\n\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    insight_type: 'daily_sales_summary',\n    content: `Resumo de Vendas ${today}: ${totalProspections} prospecções, ${totalContacts} contatos, ${totalMeetings} reuniões agendadas. Top performer: ${topPerformer?.json.team_member || 'N/A'} com ${topPerformer?.json.prospections_count || 0} prospecções. Taxa média de conversão: ${avgConversion.toFixed(1)}%`,\n    confidence_score: 1.0,\n    metadata: JSON.stringify({\n      date: today,\n      team_size: metrics.length,\n      total_prospections: totalProspections,\n      total_contacts: totalContacts,\n      total_meetings: totalMeetings,\n      avg_conversion: avgConversion\n    }),\n    processed_for_kb: true\n  }\n}];"
       },
       "id": "generate-summary",
       "name": "Generate Daily Summary",
@@ -194,37 +148,19 @@
     },
     {
       "parameters": {
-        "operation": "insert",
-        "schema": {
-          "__rl": true,
-          "value": "public",
-          "mode": "list"
-        },
-        "table": {
-          "__rl": true,
-          "value": "sentinel_insights",
-          "mode": "list"
-        },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "insight_type": "={{ $json.insight_type }}",
-            "content": "={{ $json.content }}",
-            "confidence_score": "={{ $json.confidence_score }}",
-            "metadata": "={{ $json.metadata }}",
-            "processed_for_kb": "={{ $json.processed_for_kb }}"
-          }
-        }
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.sentinel_insights (\n  insight_type,\n  content,\n  confidence_score,\n  metadata,\n  processed_for_kb\n)\nVALUES (\n  '{{ $json.insight_type }}',\n  '{{ $json.content }}',\n  {{ $json.confidence_score }},\n  '{{ $json.metadata }}'::jsonb,\n  {{ $json.processed_for_kb }}\n)\nRETURNING id",
+        "options": {}
       },
       "id": "save-summary",
       "name": "Save Summary Insight",
-      "type": "n8n-nodes-base.supabase",
-      "typeVersion": 1,
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
       "position": [1700, 350],
       "credentials": {
-        "supabaseApi": {
-          "id": "SUPABASE_CREDENTIALS_ID",
-          "name": "Supabase MIS"
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
         }
       }
     }

@@ -17,9 +17,8 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-            db: { schema: 'mottivme_intelligence_system' }
-        });
+        // Using public schema - custom schema needs to be exposed in Supabase API settings
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
         const { searchParams } = new URL(request.url);
         const priority = searchParams.get('priority');

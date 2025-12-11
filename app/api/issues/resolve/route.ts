@@ -6,9 +6,8 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function POST(request: NextRequest) {
     try {
-        const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-            db: { schema: 'mottivme_intelligence_system' }
-        });
+        // Using public schema - custom schema needs to be exposed in Supabase API settings
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
         const body = await request.json();
 
         const {

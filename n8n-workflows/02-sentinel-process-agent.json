@@ -1,0 +1,456 @@
+{
+  "name": "SENTINEL Process Agent - Bottlenecks & Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 12
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Run Every 12 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "issues",
+          "mode": "list"
+        },
+        "returnAll": false,
+        "limit": 100,
+        "filterType": "string",
+        "filterString": "detected_at >= NOW() - INTERVAL '7 days'"
+      },
+      "id": "get-recent-issues",
+      "name": "Get Recent Issues (7 days)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list"
+        },
+        "returnAll": false,
+        "limit": 200,
+        "filterType": "string",
+        "filterString": "created_at >= NOW() - INTERVAL '7 days'"
+      },
+      "id": "get-recent-messages",
+      "name": "Get Recent Messages (7 days)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 400],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Issues & Messages",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Aggregate data for analysis\nconst items = $input.all();\n\n// Separate issues and messages\nconst issues = items.filter(i => i.json.issue_type !== undefined);\nconst messages = items.filter(i => i.json.content !== undefined && i.json.issue_type === undefined);\n\n// Count issues by type\nconst issuesByType = {};\nissues.forEach(i => {\n  const type = i.json.issue_type || 'unknown';\n  if (!issuesByType[type]) {\n    issuesByType[type] = { count: 0, resolved: 0, avgResolutionTime: [] };\n  }\n  issuesByType[type].count++;\n  if (i.json.status === 'resolved' || i.json.status === 'closed') {\n    issuesByType[type].resolved++;\n    if (i.json.resolved_at && i.json.detected_at) {\n      const resTime = new Date(i.json.resolved_at) - new Date(i.json.detected_at);\n      issuesByType[type].avgResolutionTime.push(resTime / (1000 * 60)); // minutes\n    }\n  }\n});\n\n// Calculate averages\nObject.keys(issuesByType).forEach(type => {\n  const times = issuesByType[type].avgResolutionTime;\n  issuesByType[type].avgResolutionMinutes = times.length > 0 \n    ? times.reduce((a, b) => a + b, 0) / times.length \n    : 0;\n  delete issuesByType[type].avgResolutionTime;\n});\n\n// Identify patterns in messages\nconst messagePatterns = {};\nmessages.forEach(m => {\n  const sentiment = m.json.sentiment || 'neutral';\n  const urgency = m.json.urgency_score || 0;\n  if (!messagePatterns[sentiment]) {\n    messagePatterns[sentiment] = { count: 0, avgUrgency: 0, totalUrgency: 0 };\n  }\n  messagePatterns[sentiment].count++;\n  messagePatterns[sentiment].totalUrgency += urgency;\n});\n\nObject.keys(messagePatterns).forEach(s => {\n  messagePatterns[s].avgUrgency = messagePatterns[s].totalUrgency / messagePatterns[s].count;\n  delete messagePatterns[s].totalUrgency;\n});\n\nreturn [{\n  json: {\n    totalIssues: issues.length,\n    totalMessages: messages.length,\n    issuesByType,\n    messagePatterns,\n    period: '7_days',\n    analyzedAt: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "aggregate-data",
+      "name": "Aggregate Data for Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Você é o SENTINEL Process Agent. Sua função é analisar padrões de issues e mensagens para:\n\n1. IDENTIFICAR GARGALOS:\n   - Tipos de issues mais frequentes\n   - Issues com maior tempo de resolução\n   - Padrões de reclamações\n\n2. SUGERIR PROCESSOS:\n   - Criar ou atualizar mapas de processo\n   - Documentar fluxos de resolução\n   - Identificar responsáveis\n\n3. IDENTIFICAR OPORTUNIDADES DE AUTOMAÇÃO:\n   - Tarefas repetitivas\n   - Respostas padrão\n   - Fluxos que podem ser automatizados\n\nResponda em JSON com a estrutura:\n{\n  \"bottlenecks\": [\n    {\n      \"issue_type\": \"string\",\n      \"severity\": \"high|medium|low\",\n      \"description\": \"string\",\n      \"suggested_action\": \"string\"\n    }\n  ],\n  \"process_updates\": [\n    {\n      \"process_name\": \"string\",\n      \"category\": \"atendimento|vendas|financeiro|suporte|onboarding|cancelamento\",\n      \"description\": \"string\",\n      \"steps\": [{\"order\": 1, \"name\": \"string\", \"description\": \"string\", \"responsible\": \"string\", \"avg_time_minutes\": 0}],\n      \"bottlenecks\": [\"string\"],\n      \"optimization_suggestions\": [\"string\"]\n    }\n  ],\n  \"automation_opportunities\": [\n    {\n      \"description\": \"string\",\n      \"estimated_time_saved_hours\": 0,\n      \"implementation_complexity\": \"low|medium|high\",\n      \"priority_score\": 0\n    }\n  ]\n}"
+            },
+            {
+              "role": "user",
+              "content": "=Analise estes dados dos últimos 7 dias e identifique gargalos, atualizações de processos e oportunidades de automação:\n\nTotal de Issues: {{ $json.totalIssues }}\nTotal de Mensagens: {{ $json.totalMessages }}\n\nIssues por Tipo:\n{{ JSON.stringify($json.issuesByType, null, 2) }}\n\nPadrões de Mensagens:\n{{ JSON.stringify($json.messagePatterns, null, 2) }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.4,
+          "maxTokens": 2000
+        }
+      },
+      "id": "process-analyzer",
+      "name": "Analyze with Groq LLaMA",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [1050, 300],
+      "credentials": {
+        "groqApi": {
+          "id": "GROQ_CREDENTIALS_ID",
+          "name": "Groq API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI response\nconst aiResponse = $input.first().json;\n\nlet parsed;\ntry {\n  const content = aiResponse.text || aiResponse.content || JSON.stringify(aiResponse);\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;\n} catch (e) {\n  console.error('Parse error:', e);\n  parsed = { bottlenecks: [], process_updates: [], automation_opportunities: [] };\n}\n\nconst results = [];\n\n// Process updates\nif (parsed.process_updates && parsed.process_updates.length > 0) {\n  parsed.process_updates.forEach(p => {\n    results.push({\n      json: {\n        type: 'process',\n        data: {\n          process_name: p.process_name,\n          category: p.category,\n          description: p.description,\n          steps: JSON.stringify(p.steps || []),\n          bottlenecks: JSON.stringify(p.bottlenecks || []),\n          optimization_suggestions: JSON.stringify(p.optimization_suggestions || []),\n          avg_resolution_time: 0,\n          success_rate: 0,\n          status: 'draft'\n        }\n      }\n    });\n  });\n}\n\n// Automation opportunities\nif (parsed.automation_opportunities && parsed.automation_opportunities.length > 0) {\n  parsed.automation_opportunities.forEach(a => {\n    results.push({\n      json: {\n        type: 'automation',\n        data: {\n          opportunity_description: a.description,\n          estimated_time_saved_hours: a.estimated_time_saved_hours || 0,\n          implementation_complexity: a.implementation_complexity || 'medium',\n          priority_score: a.priority_score || 5,\n          status: 'identified'\n        }\n      }\n    });\n  });\n}\n\n// Store bottlenecks as insights\nif (parsed.bottlenecks && parsed.bottlenecks.length > 0) {\n  parsed.bottlenecks.forEach(b => {\n    results.push({\n      json: {\n        type: 'insight',\n        data: {\n          insight_type: 'bottleneck',\n          content: `${b.issue_type}: ${b.description}. Ação sugerida: ${b.suggested_action}`,\n          confidence_score: b.severity === 'high' ? 0.9 : b.severity === 'medium' ? 0.7 : 0.5,\n          metadata: JSON.stringify({ severity: b.severity }),\n          processed_for_kb: false\n        }\n      }\n    });\n  });\n}\n\nreturn results.length > 0 ? results : [{ json: { type: 'none', skip: true } }];"
+      },
+      "id": "parse-analysis",
+      "name": "Parse Analysis Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "operation": "equals",
+              "value2": "process"
+            }
+          ]
+        }
+      },
+      "id": "route-by-type",
+      "name": "Route by Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [1450, 300],
+      "onFallback": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "process_maps",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "process_name": "={{ $json.data.process_name }}",
+            "category": "={{ $json.data.category }}",
+            "description": "={{ $json.data.description }}",
+            "steps": "={{ $json.data.steps }}",
+            "bottlenecks": "={{ $json.data.bottlenecks }}",
+            "optimization_suggestions": "={{ $json.data.optimization_suggestions }}",
+            "status": "={{ $json.data.status }}"
+          }
+        },
+        "options": {
+          "onConflict": "ignore"
+        }
+      },
+      "id": "insert-process",
+      "name": "Insert Process Map",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1700, 150],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "operation": "equals",
+              "value2": "automation"
+            }
+          ]
+        }
+      },
+      "id": "check-automation",
+      "name": "Is Automation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1700, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "automation_opportunities",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "opportunity_description": "={{ $json.data.opportunity_description }}",
+            "estimated_time_saved_hours": "={{ $json.data.estimated_time_saved_hours }}",
+            "implementation_complexity": "={{ $json.data.implementation_complexity }}",
+            "priority_score": "={{ $json.data.priority_score }}",
+            "status": "={{ $json.data.status }}"
+          }
+        }
+      },
+      "id": "insert-automation",
+      "name": "Insert Automation Opportunity",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1950, 250],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.type }}",
+              "operation": "equals",
+              "value2": "insight"
+            }
+          ]
+        }
+      },
+      "id": "check-insight",
+      "name": "Is Insight?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1950, 400]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "sentinel_insights",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "insight_type": "={{ $json.data.insight_type }}",
+            "content": "={{ $json.data.content }}",
+            "confidence_score": "={{ $json.data.confidence_score }}",
+            "metadata": "={{ $json.data.metadata }}",
+            "processed_for_kb": false
+          }
+        }
+      },
+      "id": "insert-insight",
+      "name": "Insert Insight",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [2200, 350],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run Every 12 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Recent Issues (7 days)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Recent Messages (7 days)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Issues (7 days)": {
+      "main": [
+        [
+          {
+            "node": "Merge Issues & Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Messages (7 days)": {
+      "main": [
+        [
+          {
+            "node": "Merge Issues & Messages",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Issues & Messages": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Data for Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Data for Analysis": {
+      "main": [
+        [
+          {
+            "node": "Analyze with Groq LLaMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze with Groq LLaMA": {
+      "main": [
+        [
+          {
+            "node": "Parse Analysis Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Analysis Results": {
+      "main": [
+        [
+          {
+            "node": "Route by Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Type": {
+      "main": [
+        [
+          {
+            "node": "Insert Process Map",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Automation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Automation?": {
+      "main": [
+        [
+          {
+            "node": "Insert Automation Opportunity",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Insight?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Insight?": {
+      "main": [
+        [
+          {
+            "node": "Insert Insight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "mis-sentinel"
+  },
+  "tags": [
+    {
+      "name": "SENTINEL"
+    }
+  ]
+}

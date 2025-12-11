@@ -1,0 +1,357 @@
+{
+  "name": "Sales Metrics Collector - BDR Prospection Tracking",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 23 * * 1-5"
+            }
+          ]
+        }
+      },
+      "id": "trigger-daily",
+      "name": "Run Daily at 23:00 (Weekdays)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://hooks.n8n.cloud/webhook/manual-trigger-sales",
+        "options": {}
+      },
+      "id": "webhook-manual",
+      "name": "Manual Trigger Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 500],
+      "webhookId": "sales-metrics-manual"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list"
+        },
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "created_at >= CURRENT_DATE AND created_at < CURRENT_DATE + INTERVAL '1 day'"
+      },
+      "id": "get-today-messages",
+      "name": "Get Today's Messages",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "team_members",
+          "mode": "list"
+        },
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "role IN ('bdr', 'sdr', 'sales')"
+      },
+      "id": "get-sales-team",
+      "name": "Get Sales Team Members",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "merge-data",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [700, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate sales metrics per team member\nconst items = $input.all();\n\n// Separate messages and team members\nconst messages = items.filter(i => i.json.content !== undefined && !i.json.role);\nconst teamMembers = items.filter(i => i.json.role !== undefined);\n\n// If no team members defined, use sender_name from messages\nlet salesPeople = teamMembers.length > 0 \n  ? teamMembers.map(t => t.json.name || t.json.username)\n  : [...new Set(messages.map(m => m.json.sender_name).filter(Boolean))];\n\nconst today = new Date().toISOString().split('T')[0];\nconst results = [];\n\nsalesPeople.forEach(person => {\n  // Filter messages by this person (outbound = prospection)\n  const personMessages = messages.filter(m => \n    m.json.sender_name === person && \n    (m.json.direction === 'outbound' || m.json.is_outbound === true)\n  );\n  \n  // Calculate metrics\n  const prospections = personMessages.filter(m => \n    m.json.message_type === 'prospection' || \n    m.json.category === 'prospection' ||\n    m.json.is_first_contact === true\n  ).length || Math.floor(personMessages.length * 0.7); // Estimate if not categorized\n  \n  const contacts = personMessages.length;\n  \n  // Calculate time between prospections\n  let avgTimeBetween = 0;\n  let totalTime = 0;\n  \n  if (personMessages.length > 1) {\n    const sortedMsgs = personMessages.sort((a, b) => \n      new Date(a.json.created_at) - new Date(b.json.created_at)\n    );\n    \n    for (let i = 1; i < sortedMsgs.length; i++) {\n      const diff = new Date(sortedMsgs[i].json.created_at) - new Date(sortedMsgs[i-1].json.created_at);\n      totalTime += diff / (1000 * 60); // minutes\n    }\n    avgTimeBetween = totalTime / (sortedMsgs.length - 1);\n  }\n  \n  // Calculate meetings (messages with 'reunião', 'call', 'agendar')\n  const meetingKeywords = ['reunião', 'reuniao', 'call', 'agendar', 'agenda', 'meeting'];\n  const meetings = personMessages.filter(m => {\n    const content = (m.json.content || '').toLowerCase();\n    return meetingKeywords.some(k => content.includes(k));\n  }).length;\n  \n  // Conversion rate estimate\n  const conversionRate = contacts > 0 ? (meetings / contacts) * 100 : 0;\n  \n  results.push({\n    json: {\n      team_member: person,\n      date: today,\n      prospections_count: prospections,\n      contacts_made: contacts,\n      meetings_scheduled: meetings,\n      proposals_sent: 0, // Would need integration with CRM\n      deals_closed: 0, // Would need integration with CRM\n      avg_time_between_prospections: Math.round(avgTimeBetween * 10) / 10,\n      total_prospection_time_minutes: Math.round(totalTime),\n      conversion_rate: Math.round(conversionRate * 10) / 10\n    }\n  });\n});\n\nreturn results.length > 0 ? results : [{ json: { skip: true, reason: 'No sales data for today' } }];"
+      },
+      "id": "calculate-metrics",
+      "name": "Calculate Daily Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-data",
+      "name": "Has Data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1100, 400]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "sales_metrics",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "team_member": "={{ $json.team_member }}",
+            "date": "={{ $json.date }}",
+            "prospections_count": "={{ $json.prospections_count }}",
+            "contacts_made": "={{ $json.contacts_made }}",
+            "meetings_scheduled": "={{ $json.meetings_scheduled }}",
+            "proposals_sent": "={{ $json.proposals_sent }}",
+            "deals_closed": "={{ $json.deals_closed }}",
+            "avg_time_between_prospections": "={{ $json.avg_time_between_prospections }}",
+            "total_prospection_time_minutes": "={{ $json.total_prospection_time_minutes }}",
+            "conversion_rate": "={{ $json.conversion_rate }}"
+          }
+        },
+        "conflictColumns": ["team_member", "date"]
+      },
+      "id": "upsert-metrics",
+      "name": "Upsert Sales Metrics",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1300, 350],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate daily summary insight\nconst metrics = $input.all();\n\nconst totalProspections = metrics.reduce((sum, m) => sum + (m.json.prospections_count || 0), 0);\nconst totalContacts = metrics.reduce((sum, m) => sum + (m.json.contacts_made || 0), 0);\nconst totalMeetings = metrics.reduce((sum, m) => sum + (m.json.meetings_scheduled || 0), 0);\nconst avgConversion = metrics.reduce((sum, m) => sum + (m.json.conversion_rate || 0), 0) / metrics.length;\n\nconst topPerformer = metrics.sort((a, b) => b.json.prospections_count - a.json.prospections_count)[0];\n\nconst today = new Date().toISOString().split('T')[0];\n\nreturn [{\n  json: {\n    insight_type: 'daily_sales_summary',\n    content: `Resumo de Vendas ${today}: ${totalProspections} prospecções, ${totalContacts} contatos, ${totalMeetings} reuniões agendadas. Top performer: ${topPerformer?.json.team_member || 'N/A'} com ${topPerformer?.json.prospections_count || 0} prospecções. Taxa média de conversão: ${avgConversion.toFixed(1)}%`,\n    confidence_score: 1.0,\n    metadata: JSON.stringify({\n      date: today,\n      team_size: metrics.length,\n      total_prospections: totalProspections,\n      total_contacts: totalContacts,\n      total_meetings: totalMeetings,\n      avg_conversion: avgConversion\n    }),\n    processed_for_kb: true\n  }\n}];"
+      },
+      "id": "generate-summary",
+      "name": "Generate Daily Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1500, 350]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "sentinel_insights",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "insight_type": "={{ $json.insight_type }}",
+            "content": "={{ $json.content }}",
+            "confidence_score": "={{ $json.confidence_score }}",
+            "metadata": "={{ $json.metadata }}",
+            "processed_for_kb": "={{ $json.processed_for_kb }}"
+          }
+        }
+      },
+      "id": "save-summary",
+      "name": "Save Summary Insight",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1700, 350],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run Daily at 23:00 (Weekdays)": {
+      "main": [
+        [
+          {
+            "node": "Get Today's Messages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Sales Team Members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Today's Messages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Sales Team Members",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Today's Messages": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sales Team Members": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Calculate Daily Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Daily Metrics": {
+      "main": [
+        [
+          {
+            "node": "Has Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Data?": {
+      "main": [
+        [
+          {
+            "node": "Upsert Sales Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Sales Metrics": {
+      "main": [
+        [
+          {
+            "node": "Generate Daily Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Daily Summary": {
+      "main": [
+        [
+          {
+            "node": "Save Summary Insight",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "mis-sentinel"
+  },
+  "tags": [
+    {
+      "name": "SENTINEL"
+    },
+    {
+      "name": "Sales"
+    }
+  ]
+}

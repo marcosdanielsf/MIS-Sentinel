@@ -1,0 +1,340 @@
+{
+  "name": "SENTINEL Knowledge Agent - FAQ & Solutions",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Run Every 6 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "sentinel_insights",
+          "mode": "list"
+        },
+        "returnAll": false,
+        "limit": 50,
+        "filterType": "string",
+        "filterString": "processed_for_kb = false AND insight_type IN ('pattern', 'solution', 'recommendation')"
+      },
+      "id": "get-unprocessed-insights",
+      "name": "Get Unprocessed Insights",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "split-insights",
+      "name": "Process One by One",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Você é o SENTINEL Knowledge Agent. Sua função é transformar insights de análise de mensagens em entradas de Knowledge Base estruturadas.\n\nPara cada insight, você deve:\n1. Determinar a categoria: 'faq', 'solution', 'process', 'best_practice'\n2. Criar um título claro e objetivo\n3. Criar um conteúdo detalhado e útil\n4. Extrair tags relevantes\n5. Determinar a prioridade (1-5)\n\nResponda SEMPRE em JSON válido com a estrutura:\n{\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"Título claro\",\n  \"content\": \"Conteúdo detalhado...\",\n  \"tags\": [\"tag1\", \"tag2\"],\n  \"priority\": 3,\n  \"should_create\": true,\n  \"reason\": \"Motivo da decisão\"\n}\n\nSe o insight não for relevante para a Knowledge Base, retorne should_create: false"
+            },
+            {
+              "role": "user",
+              "content": "=Transforme este insight em uma entrada de Knowledge Base:\n\nTipo: {{ $json.insight_type }}\nConteúdo: {{ $json.content }}\nConfiança: {{ $json.confidence_score }}\nContexto: {{ $json.metadata }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 1000
+        }
+      },
+      "id": "knowledge-processor",
+      "name": "Process with Groq LLaMA",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [850, 300],
+      "credentials": {
+        "groqApi": {
+          "id": "GROQ_CREDENTIALS_ID",
+          "name": "Groq API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the AI response\nconst aiResponse = $input.first().json;\nconst originalInsight = $('Process One by One').first().json;\n\nlet parsed;\ntry {\n  // Extract JSON from response\n  const content = aiResponse.text || aiResponse.content || JSON.stringify(aiResponse);\n  const jsonMatch = content.match(/\\{[\\s\\S]*\\}/);\n  parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;\n} catch (e) {\n  parsed = null;\n}\n\nif (!parsed || !parsed.should_create) {\n  return [{\n    json: {\n      skip: true,\n      insight_id: originalInsight.id,\n      reason: parsed?.reason || 'Could not parse or not relevant'\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    skip: false,\n    insight_id: originalInsight.id,\n    knowledge_entry: {\n      category: parsed.category,\n      title: parsed.title,\n      content: parsed.content,\n      tags: parsed.tags || [],\n      priority: parsed.priority || 3,\n      source: 'sentinel_ai',\n      source_insight_id: originalInsight.id,\n      status: 'published',\n      helpful_count: 0,\n      not_helpful_count: 0\n    }\n  }\n}];"
+      },
+      "id": "parse-response",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-should-create",
+      "name": "Should Create Entry?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "knowledge_base",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "category": "={{ $json.knowledge_entry.category }}",
+            "title": "={{ $json.knowledge_entry.title }}",
+            "content": "={{ $json.knowledge_entry.content }}",
+            "tags": "={{ $json.knowledge_entry.tags }}",
+            "priority": "={{ $json.knowledge_entry.priority }}",
+            "source": "={{ $json.knowledge_entry.source }}",
+            "status": "={{ $json.knowledge_entry.status }}",
+            "helpful_count": 0,
+            "not_helpful_count": 0
+          }
+        }
+      },
+      "id": "insert-knowledge",
+      "name": "Insert to Knowledge Base",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1450, 200],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "sentinel_insights",
+          "mode": "list"
+        },
+        "filtersUI": {
+          "filterValues": [
+            {
+              "fieldName": "id",
+              "fieldValue": "={{ $json.insight_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processed_for_kb": true
+          }
+        }
+      },
+      "id": "mark-processed",
+      "name": "Mark Insight as Processed",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1650, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "loop-back",
+      "name": "Continue Loop",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1850, 300]
+    }
+  ],
+  "connections": {
+    "Run Every 6 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Unprocessed Insights",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unprocessed Insights": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process One by One": {
+      "main": [
+        [
+          {
+            "node": "Process with Groq LLaMA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Continue Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process with Groq LLaMA": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Should Create Entry?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Should Create Entry?": {
+      "main": [
+        [
+          {
+            "node": "Insert to Knowledge Base",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mark Insight as Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert to Knowledge Base": {
+      "main": [
+        [
+          {
+            "node": "Mark Insight as Processed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Insight as Processed": {
+      "main": [
+        [
+          {
+            "node": "Process One by One",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "mis-sentinel"
+  },
+  "tags": [
+    {
+      "name": "SENTINEL",
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}

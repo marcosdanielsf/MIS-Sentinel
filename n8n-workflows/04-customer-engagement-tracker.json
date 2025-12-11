@@ -1,0 +1,385 @@
+{
+  "name": "Customer Engagement Tracker - CS Health Monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "trigger-schedule",
+      "name": "Run Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "list"
+        },
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "created_at >= NOW() - INTERVAL '30 days'"
+      },
+      "id": "get-recent-messages",
+      "name": "Get Last 30 Days Messages",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [450, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Group messages by customer and calculate engagement metrics\nconst messages = $input.all();\nconst today = new Date();\nconst todayStr = today.toISOString().split('T')[0];\n\n// Group by customer\nconst customerGroups = {};\n\nmessages.forEach(m => {\n  const msg = m.json;\n  const customerId = msg.customer_id || msg.sender_phone || msg.sender_name || 'unknown';\n  const customerName = msg.customer_name || msg.sender_name || customerId;\n  \n  if (!customerGroups[customerId]) {\n    customerGroups[customerId] = {\n      customer_id: customerId,\n      customer_name: customerName,\n      messages_sent: 0,\n      messages_received: 0,\n      response_times: [],\n      sentiments: [],\n      urgencies: [],\n      last_interaction: null,\n      first_interaction: null\n    };\n  }\n  \n  const group = customerGroups[customerId];\n  const msgDate = new Date(msg.created_at);\n  \n  // Count messages\n  if (msg.direction === 'inbound' || msg.is_inbound) {\n    group.messages_received++;\n  } else {\n    group.messages_sent++;\n  }\n  \n  // Track sentiment and urgency\n  if (msg.sentiment) group.sentiments.push(msg.sentiment);\n  if (msg.urgency_score) group.urgencies.push(msg.urgency_score);\n  \n  // Track interaction dates\n  if (!group.last_interaction || msgDate > new Date(group.last_interaction)) {\n    group.last_interaction = msg.created_at;\n  }\n  if (!group.first_interaction || msgDate < new Date(group.first_interaction)) {\n    group.first_interaction = msg.created_at;\n  }\n});\n\n// Calculate engagement scores and health status\nconst results = Object.values(customerGroups).map(customer => {\n  const totalMessages = customer.messages_sent + customer.messages_received;\n  \n  // Days since last contact\n  const lastContact = customer.last_interaction ? new Date(customer.last_interaction) : today;\n  const daysSinceContact = Math.floor((today - lastContact) / (1000 * 60 * 60 * 24));\n  \n  // Calculate engagement score (0-100)\n  let engagementScore = 0;\n  \n  // Message volume factor (max 30 points)\n  engagementScore += Math.min(totalMessages * 2, 30);\n  \n  // Recency factor (max 30 points)\n  if (daysSinceContact <= 1) engagementScore += 30;\n  else if (daysSinceContact <= 3) engagementScore += 25;\n  else if (daysSinceContact <= 7) engagementScore += 20;\n  else if (daysSinceContact <= 14) engagementScore += 10;\n  else if (daysSinceContact <= 30) engagementScore += 5;\n  \n  // Response ratio factor (max 20 points)\n  if (customer.messages_received > 0) {\n    const responseRatio = customer.messages_sent / customer.messages_received;\n    if (responseRatio >= 1) engagementScore += 20;\n    else engagementScore += Math.floor(responseRatio * 20);\n  }\n  \n  // Sentiment factor (max 20 points)\n  const negativeSentiments = customer.sentiments.filter(s => s === 'negative' || s === 'angry').length;\n  const positiveSentiments = customer.sentiments.filter(s => s === 'positive' || s === 'happy').length;\n  const sentimentRatio = customer.sentiments.length > 0 \n    ? (positiveSentiments - negativeSentiments) / customer.sentiments.length \n    : 0;\n  engagementScore += Math.floor((sentimentRatio + 1) * 10); // -1 to 1 -> 0 to 20\n  \n  // Calculate churn risk (0-100)\n  let churnRisk = 0;\n  \n  // Days since contact factor\n  if (daysSinceContact > 30) churnRisk += 40;\n  else if (daysSinceContact > 14) churnRisk += 30;\n  else if (daysSinceContact > 7) churnRisk += 15;\n  else if (daysSinceContact > 3) churnRisk += 5;\n  \n  // Negative sentiment factor\n  const negativeRatio = customer.sentiments.length > 0 \n    ? negativeSentiments / customer.sentiments.length \n    : 0;\n  churnRisk += Math.floor(negativeRatio * 30);\n  \n  // High urgency messages factor\n  const highUrgency = customer.urgencies.filter(u => u >= 8).length;\n  churnRisk += Math.min(highUrgency * 5, 20);\n  \n  // Low engagement factor\n  if (totalMessages < 3) churnRisk += 10;\n  \n  // Determine health status\n  let healthStatus;\n  if (churnRisk >= 60) healthStatus = 'critical';\n  else if (churnRisk >= 30) healthStatus = 'at_risk';\n  else healthStatus = 'healthy';\n  \n  // Calculate average response time (would need paired messages for accurate calc)\n  const avgResponseTime = customer.response_times.length > 0\n    ? customer.response_times.reduce((a, b) => a + b, 0) / customer.response_times.length\n    : 0;\n  \n  return {\n    json: {\n      customer_id: customer.customer_id,\n      customer_name: customer.customer_name,\n      date: todayStr,\n      messages_sent: customer.messages_sent,\n      messages_received: customer.messages_received,\n      response_time_avg_hours: avgResponseTime,\n      engagement_score: Math.min(Math.max(engagementScore, 0), 100),\n      health_status: healthStatus,\n      churn_risk_score: Math.min(Math.max(churnRisk, 0), 100),\n      last_interaction: customer.last_interaction,\n      days_since_last_contact: daysSinceContact,\n      nps_score: null\n    }\n  };\n});\n\nreturn results.length > 0 ? results : [{ json: { skip: true } }];"
+      },
+      "id": "calculate-engagement",
+      "name": "Calculate Engagement Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-has-data",
+      "name": "Has Customer Data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "customer_engagement",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "customer_id": "={{ $json.customer_id }}",
+            "customer_name": "={{ $json.customer_name }}",
+            "date": "={{ $json.date }}",
+            "messages_sent": "={{ $json.messages_sent }}",
+            "messages_received": "={{ $json.messages_received }}",
+            "response_time_avg_hours": "={{ $json.response_time_avg_hours }}",
+            "engagement_score": "={{ $json.engagement_score }}",
+            "health_status": "={{ $json.health_status }}",
+            "churn_risk_score": "={{ $json.churn_risk_score }}",
+            "last_interaction": "={{ $json.last_interaction }}",
+            "days_since_last_contact": "={{ $json.days_since_last_contact }}",
+            "nps_score": "={{ $json.nps_score }}"
+          }
+        },
+        "conflictColumns": ["customer_id", "date"]
+      },
+      "id": "upsert-engagement",
+      "name": "Upsert Customer Engagement",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1050, 250],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-critical",
+              "leftValue": "={{ $json.health_status }}",
+              "rightValue": "critical",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-critical",
+      "name": "Is Critical?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1050, 450]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "alert_type": "churn_risk",
+            "severity": "high",
+            "title": "=Cliente em Risco de Churn: {{ $json.customer_name }}",
+            "description": "=O cliente {{ $json.customer_name }} está em situação crítica. Score de engajamento: {{ $json.engagement_score }}, Risco de churn: {{ $json.churn_risk_score }}%. Última interação há {{ $json.days_since_last_contact }} dias.",
+            "status": "active",
+            "related_entity_type": "customer",
+            "related_entity_id": "={{ $json.customer_id }}"
+          }
+        }
+      },
+      "id": "create-alert",
+      "name": "Create Churn Alert",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1300, 450],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate CS summary insight\nconst customers = $input.all().filter(c => !c.json.skip);\n\nif (customers.length === 0) {\n  return [{ json: { skip: true } }];\n}\n\nconst today = new Date().toISOString().split('T')[0];\n\nconst healthy = customers.filter(c => c.json.health_status === 'healthy').length;\nconst atRisk = customers.filter(c => c.json.health_status === 'at_risk').length;\nconst critical = customers.filter(c => c.json.health_status === 'critical').length;\n\nconst avgEngagement = customers.reduce((sum, c) => sum + (c.json.engagement_score || 0), 0) / customers.length;\nconst avgChurnRisk = customers.reduce((sum, c) => sum + (c.json.churn_risk_score || 0), 0) / customers.length;\n\nconst highRiskCustomers = customers\n  .filter(c => c.json.churn_risk_score >= 60)\n  .map(c => c.json.customer_name)\n  .slice(0, 5);\n\nreturn [{\n  json: {\n    insight_type: 'cs_health_summary',\n    content: `Resumo CS ${today}: ${customers.length} clientes monitorados. Saudáveis: ${healthy}, Em Risco: ${atRisk}, Críticos: ${critical}. Engajamento médio: ${avgEngagement.toFixed(1)}, Risco médio de churn: ${avgChurnRisk.toFixed(1)}%. ${critical > 0 ? `Atenção urgente para: ${highRiskCustomers.join(', ')}` : 'Nenhum cliente em situação crítica.'}`,\n    confidence_score: 1.0,\n    metadata: JSON.stringify({\n      date: today,\n      total_customers: customers.length,\n      healthy_count: healthy,\n      at_risk_count: atRisk,\n      critical_count: critical,\n      avg_engagement: avgEngagement,\n      avg_churn_risk: avgChurnRisk,\n      high_risk_customers: highRiskCustomers\n    }),\n    processed_for_kb: true\n  }\n}];"
+      },
+      "id": "generate-cs-summary",
+      "name": "Generate CS Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 200]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-skip",
+              "leftValue": "={{ $json.skip }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-summary",
+      "name": "Has Summary?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1500, 200]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "schema": {
+          "__rl": true,
+          "value": "public",
+          "mode": "list"
+        },
+        "table": {
+          "__rl": true,
+          "value": "sentinel_insights",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "insight_type": "={{ $json.insight_type }}",
+            "content": "={{ $json.content }}",
+            "confidence_score": "={{ $json.confidence_score }}",
+            "metadata": "={{ $json.metadata }}",
+            "processed_for_kb": "={{ $json.processed_for_kb }}"
+          }
+        }
+      },
+      "id": "save-cs-summary",
+      "name": "Save CS Summary",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1700, 150],
+      "credentials": {
+        "supabaseApi": {
+          "id": "SUPABASE_CREDENTIALS_ID",
+          "name": "Supabase MIS"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run Every 4 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Last 30 Days Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last 30 Days Messages": {
+      "main": [
+        [
+          {
+            "node": "Calculate Engagement Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Engagement Metrics": {
+      "main": [
+        [
+          {
+            "node": "Has Customer Data?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Customer Data?": {
+      "main": [
+        [
+          {
+            "node": "Upsert Customer Engagement",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Critical?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Customer Engagement": {
+      "main": [
+        [
+          {
+            "node": "Generate CS Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Critical?": {
+      "main": [
+        [
+          {
+            "node": "Create Churn Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate CS Summary": {
+      "main": [
+        [
+          {
+            "node": "Has Summary?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Summary?": {
+      "main": [
+        [
+          {
+            "node": "Save CS Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "instanceId": "mis-sentinel"
+  },
+  "tags": [
+    {
+      "name": "SENTINEL"
+    },
+    {
+      "name": "CS"
+    }
+  ]
+}

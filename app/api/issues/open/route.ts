@@ -9,12 +9,20 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export async function GET(request: NextRequest) {
     try {
+        // Check if env vars are available
+        if (!supabaseUrl || !supabaseServiceKey) {
+            return NextResponse.json(
+                { error: 'Missing environment variables', hasUrl: !!supabaseUrl, hasKey: !!supabaseServiceKey },
+                { status: 500 }
+            );
+        }
+
         const supabase = createClient(supabaseUrl, supabaseServiceKey, {
             db: { schema: 'mottivme_intelligence_system' }
         });
 
         const { searchParams } = new URL(request.url);
-        const priority = searchParams.get('priority'); // Filter by priority
+        const priority = searchParams.get('priority');
         const limit = searchParams.get('limit') || '50';
 
         let query = supabase
@@ -31,9 +39,14 @@ export async function GET(request: NextRequest) {
         const { data: issues, error } = await query;
 
         if (error) {
-            console.error('Error fetching issues:', error);
+            console.error('Supabase error:', error);
             return NextResponse.json(
-                { error: 'Failed to fetch issues', details: error.message },
+                {
+                    error: 'Failed to fetch issues',
+                    details: error.message,
+                    code: error.code,
+                    hint: error.hint
+                },
                 { status: 500 }
             );
         }
@@ -46,7 +59,7 @@ export async function GET(request: NextRequest) {
     } catch (error: any) {
         console.error('API Error:', error);
         return NextResponse.json(
-            { error: 'Internal server error', details: error.message },
+            { error: 'Internal server error', details: error.message, stack: error.stack },
             { status: 500 }
         );
     }

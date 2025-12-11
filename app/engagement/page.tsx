@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
+import Sidebar from '@/components/Sidebar';
 import { Heart, Users, MessageSquare, TrendingUp, TrendingDown, AlertTriangle, CheckCircle, Clock, Search, Filter, ArrowUp, ArrowDown, Minus, Activity, Shield, XCircle } from 'lucide-react';
 
 interface CustomerEngagement {
@@ -46,6 +49,8 @@ const dateRanges = [
 ];
 
 export default function EngagementPage() {
+    const { user, loading: authLoading } = useAuth();
+    const router = useRouter();
     const [engagements, setEngagements] = useState<CustomerEngagement[]>([]);
     const [customerSummaries, setCustomerSummaries] = useState<CustomerSummary[]>([]);
     const [loading, setLoading] = useState(true);
@@ -67,8 +72,16 @@ export default function EngagementPage() {
     });
 
     useEffect(() => {
-        fetchEngagements();
-    }, [dateRange]);
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, authLoading, router]);
+
+    useEffect(() => {
+        if (user) {
+            fetchEngagements();
+        }
+    }, [dateRange, user]);
 
     async function fetchEngagements() {
         setLoading(true);
@@ -178,10 +191,21 @@ export default function EngagementPage() {
         return 'text-green-600 bg-green-100';
     };
 
+    if (authLoading || !user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-600"></div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+        <div className="flex min-h-screen bg-gray-100">
+            <Sidebar />
+            <div className="flex-1 overflow-auto">
+                <div className="p-6 max-w-7xl mx-auto">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <Heart className="h-7 w-7 text-pink-600" />
@@ -602,6 +626,8 @@ export default function EngagementPage() {
                         </p>
                     </div>
                 </div>
+            </div>
+            </div>
             </div>
         </div>
     );

@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
+import Sidebar from '@/components/Sidebar';
 import { TrendingUp, Users, Clock, Target, Calendar, ChevronDown, Award, Zap, Phone, MessageSquare, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 
 interface SalesMetric {
@@ -38,6 +41,8 @@ const dateRanges = [
 ];
 
 export default function SalesPage() {
+    const { user, loading: authLoading } = useAuth();
+    const router = useRouter();
     const [metrics, setMetrics] = useState<SalesMetric[]>([]);
     const [teamStats, setTeamStats] = useState<TeamMemberStats[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,8 +61,16 @@ export default function SalesPage() {
     });
 
     useEffect(() => {
-        fetchMetrics();
-    }, [dateRange]);
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, authLoading, router]);
+
+    useEffect(() => {
+        if (user) {
+            fetchMetrics();
+        }
+    }, [dateRange, user]);
 
     async function fetchMetrics() {
         setLoading(true);
@@ -155,18 +168,29 @@ export default function SalesPage() {
         return <Minus className="h-4 w-4 text-gray-400" />;
     };
 
+    if (authLoading || !user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        <TrendingUp className="h-7 w-7 text-green-600" />
-                        Comercial - Métricas BDR
-                    </h1>
-                    <p className="text-gray-500 mt-1">
-                        Acompanhamento de prospecções e performance da equipe comercial
-                    </p>
+        <div className="flex min-h-screen bg-gray-100">
+            <Sidebar />
+            <div className="flex-1 overflow-auto">
+                <div className="p-6 max-w-7xl mx-auto">
+                    {/* Header */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                        <div>
+                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                                <TrendingUp className="h-7 w-7 text-green-600" />
+                                Comercial - Métricas BDR
+                            </h1>
+                            <p className="text-gray-500 mt-1">
+                                Acompanhamento de prospecções e performance da equipe comercial
+                            </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <select
@@ -469,6 +493,8 @@ export default function SalesPage() {
                             Taxa de conversão média da equipe: {globalStats.avgConversionRate.toFixed(1)}%
                         </p>
                     </div>
+                </div>
+            </div>
                 </div>
             </div>
         </div>

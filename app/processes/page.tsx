@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
+import Sidebar from '@/components/Sidebar';
 import { GitBranch, Plus, Search, Filter, Clock, AlertTriangle, CheckCircle, XCircle, ChevronDown, ChevronRight, Zap, TrendingUp } from 'lucide-react';
 
 interface ProcessMap {
@@ -61,6 +64,8 @@ const complexityColors: Record<string, string> = {
 };
 
 export default function ProcessesPage() {
+    const { user, loading: authLoading } = useAuth();
+    const router = useRouter();
     const [processes, setProcesses] = useState<ProcessMap[]>([]);
     const [automations, setAutomations] = useState<AutomationOpportunity[]>([]);
     const [loading, setLoading] = useState(true);
@@ -80,8 +85,16 @@ export default function ProcessesPage() {
     });
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (!authLoading && !user) {
+            router.push('/login');
+        }
+    }, [user, authLoading, router]);
+
+    useEffect(() => {
+        if (user) {
+            fetchData();
+        }
+    }, [user]);
 
     async function fetchData() {
         setLoading(true);
@@ -170,10 +183,21 @@ export default function ProcessesPage() {
         }
     }
 
+    if (authLoading || !user) {
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            </div>
+        );
+    }
+
     return (
-        <div className="p-6 max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="flex justify-between items-center mb-6">
+        <div className="flex min-h-screen bg-gray-100">
+            <Sidebar />
+            <div className="flex-1 overflow-auto">
+                <div className="p-6 max-w-7xl mx-auto">
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                         <GitBranch className="h-7 w-7 text-indigo-600" />
@@ -541,6 +565,8 @@ export default function ProcessesPage() {
                     </div>
                 </div>
             )}
+                </div>
+            </div>
         </div>
     );
 }

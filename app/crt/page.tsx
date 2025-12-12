@@ -22,19 +22,23 @@ import {
 
 interface Issue {
     id: string;
-    title: string;
-    description: string | null;
-    category: string;
+    alert_id: string | null;
+    issue_type: string;
     customer_name: string | null;
-    customer_id: string | null;
+    customer_phone: string | null;
     detected_at: string;
+    first_response_at: string | null;
     resolved_at: string | null;
     status: string;
     priority: string;
     assigned_to: string | null;
-    reported_by: string | null;
-    resolution: string | null;
-    resolution_time_hours: number | null;
+    escalated_to: string | null;
+    escalated_at: string | null;
+    resolution_notes: string | null;
+    customer_satisfaction: number | null;
+    time_to_first_response: number | null;
+    time_to_resolution: number | null;
+    metadata: Record<string, unknown> | null;
 }
 
 interface CRTStats {
@@ -122,25 +126,25 @@ export default function CRTPage() {
             // Calculate resolution rate
             const resolutionRate = issuesInPeriod > 0 ? (resolvedInPeriod / issuesInPeriod) * 100 : 0;
 
-            // Calculate top issues by category
-            const categoryCounts: Record<string, { count: number; open: number }> = {};
+            // Calculate top issues by issue_type
+            const issueTypeCounts: Record<string, { count: number; open: number }> = {};
 
             issues?.forEach((i) => {
-                const cat = i.category || 'sem_categoria';
-                if (!categoryCounts[cat]) {
-                    categoryCounts[cat] = { count: 0, open: 0 };
+                const type = i.issue_type || 'sem_tipo';
+                if (!issueTypeCounts[type]) {
+                    issueTypeCounts[type] = { count: 0, open: 0 };
                 }
-                categoryCounts[cat].count++;
+                issueTypeCounts[type].count++;
                 if (i.status !== 'resolved' && i.status !== 'closed') {
-                    categoryCounts[cat].open++;
+                    issueTypeCounts[type].open++;
                 }
             });
 
-            const topIssues = Object.keys(categoryCounts)
-                .map((category) => ({
-                    category,
-                    count: categoryCounts[category].count,
-                    open: categoryCounts[category].open
+            const topIssues = Object.keys(issueTypeCounts)
+                .map((issue_type) => ({
+                    category: issue_type,
+                    count: issueTypeCounts[issue_type].count,
+                    open: issueTypeCounts[issue_type].open
                 }))
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 5);
@@ -540,7 +544,7 @@ export default function CRTPage() {
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-semibold text-gray-900">{issue.category}</p>
+                                                            <p className="font-semibold text-gray-900">{issue.issue_type}</p>
                                                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getPriorityColor(issue.priority)}`}>
                                                                 {issue.priority}
                                                             </span>
@@ -550,11 +554,11 @@ export default function CRTPage() {
                                                         </div>
                                                         <p className="text-sm text-gray-600">
                                                             Cliente: {issue.customer_name || 'N/A'}
-                                                            {issue.assigned_to && ` • Assigned: ${issue.assigned_to}`}
+                                                            {issue.assigned_to && ` • Atribuído: ${issue.assigned_to}`}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-1">
                                                             Detectado: {formatDate(issue.detected_at)}
-                                                            {issue.resolution_time_hours && ` • Resolução: ${issue.resolution_time_hours}h`}
+                                                            {issue.time_to_resolution && ` • Resolução: ${formatMinutes(issue.time_to_resolution)}`}
                                                         </p>
                                                     </div>
                                                     <div className="text-right">

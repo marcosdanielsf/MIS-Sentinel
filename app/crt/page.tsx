@@ -22,18 +22,19 @@ import {
 
 interface Issue {
     id: string;
-    issue_type: string;
-    customer_name: string;
-    customer_phone: string;
+    title: string;
+    description: string | null;
+    category: string;
+    customer_name: string | null;
+    customer_id: string | null;
     detected_at: string;
-    first_response_at: string | null;
     resolved_at: string | null;
     status: string;
     priority: string;
     assigned_to: string | null;
-    time_to_first_response: number | null;
-    time_to_resolution: number | null;
-    customer_satisfaction: number | null;
+    reported_by: string | null;
+    resolution: string | null;
+    resolution_time_hours: number | null;
 }
 
 interface CRTStats {
@@ -45,7 +46,7 @@ interface CRTStats {
     avgResolutionTime: number;
     avgSatisfaction: number;
     resolutionRate: number;
-    topIssues: { issue_type: string; count: number; open: number }[];
+    topIssues: { category: string; count: number; open: number }[];
 }
 
 export default function CRTPage() {
@@ -121,24 +122,25 @@ export default function CRTPage() {
             // Calculate resolution rate
             const resolutionRate = issuesInPeriod > 0 ? (resolvedInPeriod / issuesInPeriod) * 100 : 0;
 
-            // Calculate top issues
-            const issueTypeCounts: Record<string, { count: number; open: number }> = {};
+            // Calculate top issues by category
+            const categoryCounts: Record<string, { count: number; open: number }> = {};
 
             issues?.forEach((i) => {
-                if (!issueTypeCounts[i.issue_type]) {
-                    issueTypeCounts[i.issue_type] = { count: 0, open: 0 };
+                const cat = i.category || 'sem_categoria';
+                if (!categoryCounts[cat]) {
+                    categoryCounts[cat] = { count: 0, open: 0 };
                 }
-                issueTypeCounts[i.issue_type].count++;
+                categoryCounts[cat].count++;
                 if (i.status !== 'resolved' && i.status !== 'closed') {
-                    issueTypeCounts[i.issue_type].open++;
+                    categoryCounts[cat].open++;
                 }
             });
 
-            const topIssues = Object.keys(issueTypeCounts)
-                .map((issue_type) => ({
-                    issue_type,
-                    count: issueTypeCounts[issue_type].count,
-                    open: issueTypeCounts[issue_type].open
+            const topIssues = Object.keys(categoryCounts)
+                .map((category) => ({
+                    category,
+                    count: categoryCounts[category].count,
+                    open: categoryCounts[category].open
                 }))
                 .sort((a, b) => b.count - a.count)
                 .slice(0, 5);
@@ -407,7 +409,7 @@ export default function CRTPage() {
                                             {stats.topIssues.map((issue, idx) => (
                                                 <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
                                                     <div className="flex-1">
-                                                        <p className="font-semibold text-gray-900">{issue.issue_type}</p>
+                                                        <p className="font-semibold text-gray-900">{issue.category}</p>
                                                         <p className="text-sm text-gray-600">
                                                             {issue.count} ocorrências
                                                         </p>
@@ -538,7 +540,7 @@ export default function CRTPage() {
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-semibold text-gray-900">{issue.issue_type}</p>
+                                                            <p className="font-semibold text-gray-900">{issue.category}</p>
                                                             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getPriorityColor(issue.priority)}`}>
                                                                 {issue.priority}
                                                             </span>
@@ -552,7 +554,7 @@ export default function CRTPage() {
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-1">
                                                             Detectado: {formatDate(issue.detected_at)}
-                                                            {issue.first_response_at && ` • Resposta: ${formatMinutes(issue.time_to_first_response)}`}
+                                                            {issue.resolution_time_hours && ` • Resolução: ${issue.resolution_time_hours}h`}
                                                         </p>
                                                     </div>
                                                     <div className="text-right">

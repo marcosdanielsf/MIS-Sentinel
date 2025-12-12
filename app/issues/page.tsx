@@ -19,22 +19,21 @@ import {
 
 interface Issue {
     id: string;
-    alert_id: string | null;
-    issue_type: string;
+    title: string;
+    description: string | null;
+    category: string;
     customer_name: string | null;
-    customer_phone: string | null;
+    customer_id: string | null;
     detected_at: string;
-    first_response_at: string | null;
     resolved_at: string | null;
     status: string;
     priority: string;
     assigned_to: string | null;
-    escalated_to: string | null;
-    escalated_at: string | null;
-    resolution_notes: string | null;
-    customer_satisfaction: number | null;
-    time_to_first_response: number | null;
-    time_to_resolution: number | null;
+    reported_by: string | null;
+    resolution: string | null;
+    resolution_time_hours: number | null;
+    related_message_ids: string[] | null;
+    metadata: Record<string, unknown> | null;
     created_at: string;
     updated_at: string;
 }
@@ -116,9 +115,9 @@ export default function IssuesPage() {
         if (searchTerm) {
             filtered = filtered.filter(
                 (issue) =>
-                    issue.issue_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    issue.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    issue.customer_phone?.includes(searchTerm)
+                    issue.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    issue.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    issue.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
             );
         }
 
@@ -155,8 +154,8 @@ export default function IssuesPage() {
 
     const handleSelectIssue = (issue: Issue) => {
         setSelectedIssue(issue);
-        setResolveNotes(issue.resolution_notes || '');
-        setSatisfaction(issue.customer_satisfaction || 5);
+        setResolveNotes(issue.resolution || '');
+        setSatisfaction(5);
         setAssignTo(issue.assigned_to || '');
         fetchIssueActions(issue.id);
     };
@@ -190,8 +189,7 @@ export default function IssuesPage() {
                 .update({
                     status: 'resolved',
                     resolved_at: new Date().toISOString(),
-                    resolution_notes: resolveNotes,
-                    customer_satisfaction: satisfaction,
+                    resolution: resolveNotes,
                 })
                 .eq('id', selectedIssue.id);
 
@@ -221,7 +219,6 @@ export default function IssuesPage() {
                 .update({
                     assigned_to: assignTo,
                     status: 'in_progress',
-                    first_response_at: selectedIssue.first_response_at || new Date().toISOString(),
                 })
                 .eq('id', selectedIssue.id);
 
@@ -253,12 +250,11 @@ export default function IssuesPage() {
                 taken_by: user?.username || 'Unknown',
             });
 
-            // Update first_response_at if not set
-            if (!selectedIssue.first_response_at) {
+            // Update status if still open
+            if (selectedIssue.status === 'open') {
                 await supabase
                     .from('issues')
                     .update({
-                        first_response_at: new Date().toISOString(),
                         status: 'in_progress',
                     })
                     .eq('id', selectedIssue.id);
@@ -418,7 +414,7 @@ export default function IssuesPage() {
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex-1">
                                                 <div className="flex items-center gap-2 mb-2">
-                                                    <h3 className="font-semibold text-gray-900">{issue.issue_type}</h3>
+                                                    <h3 className="font-semibold text-gray-900">{issue.title}</h3>
                                                     <span
                                                         className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(issue.status)}`}
                                                     >
@@ -431,10 +427,9 @@ export default function IssuesPage() {
                                                         {issue.customer_name}
                                                     </p>
                                                 )}
-                                                {issue.customer_phone && (
-                                                    <p className="text-sm text-gray-600 flex items-center gap-1">
-                                                        <Phone className="h-4 w-4" />
-                                                        {issue.customer_phone}
+                                                {issue.category && (
+                                                    <p className="text-sm text-gray-500">
+                                                        Categoria: {issue.category}
                                                     </p>
                                                 )}
                                             </div>
@@ -452,10 +447,10 @@ export default function IssuesPage() {
                                                 <Clock className="h-3 w-3" />
                                                 {formatDate(issue.detected_at)}
                                             </div>
-                                            {issue.time_to_resolution && (
+                                            {issue.resolution_time_hours && (
                                                 <div className="flex items-center gap-1 text-green-600 font-semibold">
                                                     <CheckCircle className="h-3 w-3" />
-                                                    {formatMinutes(issue.time_to_resolution)}
+                                                    {issue.resolution_time_hours}h
                                                 </div>
                                             )}
                                         </div>
@@ -486,8 +481,16 @@ export default function IssuesPage() {
 
                                     <div className="space-y-4">
                                         <div>
-                                            <label className="text-sm font-medium text-gray-700">Tipo</label>
-                                            <p className="text-gray-900">{selectedIssue.issue_type}</p>
+                                            <label className="text-sm font-medium text-gray-700">Título</label>
+                                            <p className="text-gray-900">{selectedIssue.title}</p>
+                                            {selectedIssue.description && (
+                                                <p className="text-sm text-gray-600 mt-1">{selectedIssue.description}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <label className="text-sm font-medium text-gray-700">Categoria</label>
+                                            <p className="text-gray-900">{selectedIssue.category}</p>
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-4">
@@ -518,9 +521,6 @@ export default function IssuesPage() {
                                             <div>
                                                 <label className="text-sm font-medium text-gray-700">Cliente</label>
                                                 <p className="text-gray-900">{selectedIssue.customer_name}</p>
-                                                {selectedIssue.customer_phone && (
-                                                    <p className="text-sm text-gray-600">{selectedIssue.customer_phone}</p>
-                                                )}
                                             </div>
                                         )}
 
@@ -529,13 +529,13 @@ export default function IssuesPage() {
                                             <p className="text-gray-900">{formatDate(selectedIssue.detected_at)}</p>
                                         </div>
 
-                                        {selectedIssue.time_to_first_response && (
+                                        {selectedIssue.reported_by && (
                                             <div>
                                                 <label className="text-sm font-medium text-gray-700">
-                                                    Tempo até primeira resposta
+                                                    Reportado por
                                                 </label>
                                                 <p className="text-gray-900">
-                                                    {formatMinutes(selectedIssue.time_to_first_response)}
+                                                    {selectedIssue.reported_by}
                                                 </p>
                                             </div>
                                         )}
@@ -665,19 +665,14 @@ export default function IssuesPage() {
                                                     <CheckCircle className="h-5 w-5" />
                                                     Issue Resolvido
                                                 </div>
-                                                {selectedIssue.resolution_notes && (
+                                                {selectedIssue.resolution && (
                                                     <p className="text-sm text-gray-700 mb-2">
-                                                        {selectedIssue.resolution_notes}
+                                                        {selectedIssue.resolution}
                                                     </p>
                                                 )}
-                                                {selectedIssue.customer_satisfaction && (
+                                                {selectedIssue.resolution_time_hours && (
                                                     <p className="text-sm text-gray-600">
-                                                        Satisfação: {selectedIssue.customer_satisfaction} ⭐
-                                                    </p>
-                                                )}
-                                                {selectedIssue.time_to_resolution && (
-                                                    <p className="text-sm text-gray-600">
-                                                        Tempo de resolução: {formatMinutes(selectedIssue.time_to_resolution)}
+                                                        Tempo de resolução: {selectedIssue.resolution_time_hours}h
                                                     </p>
                                                 )}
                                             </div>

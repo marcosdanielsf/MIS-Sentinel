@@ -1,0 +1,150 @@
+{
+  "name": "Customer Engagement Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 4
+            }
+          ]
+        }
+      },
+      "id": "1df8f6cb-0adc-44b6-81f8-a097899c2b7d",
+      "name": "Run Every 4 Hours",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -10032,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT *, sender_phone as customer_id FROM mottivme_intelligence_system.messages WHERE timestamp >= NOW() - INTERVAL '30 days' ORDER BY timestamp DESC",
+        "options": {}
+      },
+      "id": "e253e50d-e606-46ab-993f-710d6678ba39",
+      "name": "Get Messages (30 days)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -9824,
+        480
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate engagement metrics for each customer\nconst messages = $input.all().map(item => item.json);\n\n// Group messages by customer (using sender_phone as customer_id)\nconst customers = {};\n\nmessages.forEach(message => {\n  const customerId = message.customer_id || message.sender_phone; // Use the alias\n  const customerName = message.sender_name || 'Unknown';\n  \n  if (!customers[customerId]) {\n    customers[customerId] = {\n      customer_id: customerId,\n      customer_name: customerName,\n      messages: [],\n      first_interaction: message.timestamp,\n      last_interaction: message.timestamp\n    };\n  }\n  \n  customers[customerId].messages.push(message);\n  \n  // Update interaction dates\n  if (new Date(message.timestamp) < new Date(customers[customerId].first_interaction)) {\n    customers[customerId].first_interaction = message.timestamp;\n  }\n  if (new Date(message.timestamp) > new Date(customers[customerId].last_interaction)) {\n    customers[customerId].last_interaction = message.timestamp;\n  }\n});\n\n// Calculate metrics for each customer\nconst results = [];\nconst alerts = [];\n\nObject.values(customers).forEach(customer => {\n  const msgs = customer.messages;\n  const totalMessages = msgs.length;\n  const sentMessages = msgs.filter(m => m.sender_phone === customer.customer_id).length;\n  const receivedMessages = totalMessages - sentMessages;\n  \n  // Calculate response time (simplified - average time between messages)\n  const responseTimes = [];\n  for (let i = 1; i < msgs.length; i++) {\n    const timeDiff = new Date(msgs[i].timestamp) - new Date(msgs[i-1].timestamp);\n    responseTimes.push(timeDiff / (1000 * 60 * 60)); // hours\n  }\n  const avgResponseTime = responseTimes.length > 0 ? responseTimes.reduce((a,b) => a+b) / responseTimes.length : 0;\n  \n  // Calculate engagement score (0-100)\n  const recencyDays = (new Date() - new Date(customer.last_interaction)) / (1000 * 60 * 60 * 24);\n  const engagementScore = Math.max(0, Math.min(100, \n    (totalMessages * 10) + (receivedMessages * 5) - (recencyDays * 2)\n  ));\n  \n  // Calculate churn risk (0-100, higher = higher risk)\n  const churnRisk = Math.max(0, Math.min(100, recencyDays * 5));\n  \n  // Mock NPS score (would need survey data)\n  const npsScore = Math.floor(Math.random() * 40) + 30; // 30-70 range\n  \n  // Determine health status\n  let healthStatus = 'healthy';\n  if (engagementScore < 30 || churnRisk > 70) healthStatus = 'at_risk';\n  if (engagementScore < 10 || churnRisk > 90) healthStatus = 'critical';\n  \n  // Prepare engagement data\n  results.push({\n    customer_id: customer.customer_id,\n    customer_name: customer.customer_name,\n    date: new Date().toISOString().split('T')[0],\n    messages_sent: sentMessages,\n    messages_received: receivedMessages,\n    response_time_avg_hours: avgResponseTime,\n    engagement_score: engagementScore,\n    churn_risk_score: churnRisk,\n    nps_score: npsScore,\n    health_status: healthStatus,\n    last_interaction: customer.last_interaction,\n    days_since_last_contact: recencyDays\n  });\n  \n  // Generate alerts if needed\n  if (healthStatus === 'at_risk' || healthStatus === 'critical') {\n    alerts.push({\n      alert_type: 'engagement',\n      title: `Cliente ${customer.customer_name} precisa de aten\u00e7\u00e3o`,\n      description: `Pontua\u00e7\u00e3o de engajamento baixa (${engagementScore.toFixed(1)}) e risco de churn alto (${churnRisk.toFixed(1)}%). \u00daltima intera\u00e7\u00e3o h\u00e1 ${recencyDays.toFixed(1)} dias.`,\n      severity: healthStatus === 'critical' ? 'high' : 'medium',\n      related_message_ids: customer.messages.map(m => m.id),\n      affected_team_members: ['sales_team'],\n      suggested_actions: [\n        'Enviar mensagem de follow-up',\n        'Agendar liga\u00e7\u00e3o de acompanhamento',\n        'Revisar hist\u00f3rico de conversas'\n      ],\n      status: 'pending'\n    });\n  }\n});\n\nreturn [\n  {\n    json: {\n      engagement_data: results,\n      alerts: alerts\n    }\n  }\n];"
+      },
+      "id": "0da59da9-7683-4f2d-b3a9-912983b1c9c5",
+      "name": "Calculate Engagement Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -9424,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO mottivme_intelligence_system.customer_engagement \n(customer_id, customer_name, date, messages_sent, messages_received, response_time_avg_hours, engagement_score, churn_risk_score, nps_score, health_status, last_interaction, days_since_last_contact)\nVALUES {{ $json.engagement_data.map(item => `('${item.customer_id}', '${item.customer_name.replace(/'/g, \"''\")}', '${item.date}', ${item.messages_sent}, ${item.messages_received}, ${item.response_time_avg_hours}, ${item.engagement_score}, ${item.churn_risk_score}, ${item.nps_score}, '${item.health_status}', '${item.last_interaction}', ${item.days_since_last_contact})`).join(',\\n') }}\nON CONFLICT (customer_id, date) DO UPDATE SET\n  messages_sent = EXCLUDED.messages_sent,\n  messages_received = EXCLUDED.messages_received,\n  response_time_avg_hours = EXCLUDED.response_time_avg_hours,\n  engagement_score = EXCLUDED.engagement_score,\n  churn_risk_score = EXCLUDED.churn_risk_score,\n  nps_score = EXCLUDED.nps_score,\n  health_status = EXCLUDED.health_status,\n  last_interaction = EXCLUDED.last_interaction,\n  days_since_last_contact = EXCLUDED.days_since_last_contact,\n  updated_at = NOW()",
+        "options": {}
+      },
+      "id": "5007aa1c-d843-49a6-8d71-73372672a058",
+      "name": "Insert Engagement Data",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -9224,
+        480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO mottivme_intelligence_system.alerts \n(alert_type, title, description, severity, related_message_ids, affected_team_members, suggested_actions, status)\nVALUES {{ $json.alerts.map(alert => `('${alert.alert_type}', '${alert.title.replace(/'/g, \"''\")}', '${alert.description.replace(/'/g, \"''\")}', '${alert.severity}', ARRAY[${alert.related_message_ids.map(id => `'${id}'`).join(',')}], ARRAY[${alert.affected_team_members.map(member => `'${member}'`).join(',')}], ARRAY[${alert.suggested_actions.map(action => `'${action.replace(/'/g, \"''\")}'`).join(',')}], '${alert.status}')`).join(',\\n') }}",
+        "options": {}
+      },
+      "id": "a158feff-77dd-4374-8a19-523e478c02eb",
+      "name": "Insert Alerts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -9024,
+        480
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Run Every 4 Hours": {
+      "main": [
+        [
+          {
+            "node": "Get Messages (30 days)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Messages (30 days)": {
+      "main": [
+        [
+          {
+            "node": "Calculate Engagement Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Engagement Metrics": {
+      "main": [
+        [
+          {
+            "node": "Insert Engagement Data",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Insert Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {},
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9d65e6caa0e89e696b77790e020391d74468b15f71b3dcdb63aad81f090f5e69"
+  },
+  "pinData": {},
+  "versionId": "12345678-1234-1234-1234-123456789012"
+}

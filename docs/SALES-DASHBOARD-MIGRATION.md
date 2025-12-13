@@ -34,22 +34,21 @@ Migrar o dashboard "Mottivme Sales" do Power BI Desktop para uma aplicação web
 
 #### **Tabelas Fato (Transacionais)**
 1. **fLeadsEUA** - Leads dos Estados Unidos (dados atuais)
-2. **fLeadsEUA2** - Leads dos Estados Unidos (segunda fonte/período)
-3. **InvTraBPO** - Investimento/Tracking BPO
+2. **InvTraBPO** - Investimento/Tracking BPO
 
 #### **Tabelas Dimensão**
-4. **Calendario** - Dimensão de tempo (datas, meses, anos)
-5. **Etapas** - Etapas do funil de vendas
-6. **FontedoLead** - Origem/Fonte dos leads
-7. **Funil** - Configuração do funil
-8. **User** - Usuários/Vendedores
-9. **Quemagendou** - Quem agendou (atribuição)
-10. **FluxoVS** - Fluxo de vendas
+3. **Calendario** - Dimensão de tempo (datas, meses, anos)
+4. **Etapas** - Etapas do funil de vendas
+5. **FontedoLead** - Origem/Fonte dos leads
+6. **Funil** - Configuração do funil
+7. **User** - Usuários/Vendedores
+8. **Quemagendou** - Quem agendou (atribuição)
+9. **FluxoVS** - Fluxo de vendas
 
 #### **Tabelas de Métricas**
-11. **Medidas** - Measures DAX (métricas calculadas)
-12. **Metricas** - Métricas adicionais
-13. **ResumoMetricas** - Resumo de métricas agregadas
+10. **Medidas** - Measures DAX (métricas calculadas)
+11. **Metricas** - Métricas adicionais
+12. **ResumoMetricas** - Resumo de métricas agregadas
 
 ---
 

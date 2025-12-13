@@ -1,0 +1,161 @@
+{
+  "name": "MIS - Prospection Report Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule - Every 5min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  id,\n  external_id,\n  sender_name,\n  sender_phone,\n  message_body,\n  created_at,\n  group_name,\n  group_sender_name,\n  group_sender_phone,\n  is_group_message\nFROM mottivme_intelligence_system.messages\nWHERE \n  (LOWER(sender_name) LIKE '%lucas%' OR LOWER(group_sender_name) LIKE '%lucas%')\n  AND created_at >= NOW() - INTERVAL '10 minutes'\n  AND processed_by_observer = false\n  AND message_body IS NOT NULL\n  AND message_body != ''\nORDER BY created_at DESC\nLIMIT 50",
+        "options": {}
+      },
+      "id": "get-lucas-messages",
+      "name": "Get Lucas Messages",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length === 0) {\n  return [];\n}\n\nreturn items.map(item => {\n  const input = item.json;\n  const message = {\n    content: input.message_body || '',\n    sender_name: input.is_group_message ? (input.group_sender_name || 'Unknown') : (input.sender_name || 'Unknown'),\n    sender_phone: input.is_group_message ? (input.group_sender_phone || '') : (input.sender_phone || ''),\n    group_name: input.group_name || '',\n    message_id: input.external_id || input.id || '',\n    timestamp: input.created_at || new Date().toISOString(),\n    db_message_id: input.id\n  };\n  return { json: message };\n});"
+      },
+      "id": "extract-message",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const message = $input.first().json;\nconst content = message.content;\nconst reports = [];\nconst lines = content.split('\\n');\n\nconst patterns = [\n  /([A-Za-z\\u00C0-\\u00FF\\s]+)\\s*[:|-]\\s*(\\d+)/gi,\n  /([A-Za-z\\u00C0-\\u00FF\\s]+)\\s*\\(\\s*(\\d+)\\s*\\)/gi,\n  /(\\d+)\\s*[-:]\\s*([A-Za-z\\u00C0-\\u00FF\\s]+)/gi\n];\n\nfor (const line of lines) {\n  for (const pattern of patterns) {\n    pattern.lastIndex = 0;\n    let match;\n    while ((match = pattern.exec(line)) !== null) {\n      let clientName, count;\n      if (isNaN(parseInt(match[1]))) {\n        clientName = match[1].trim();\n        count = parseInt(match[2]);\n      } else {\n        count = parseInt(match[1]);\n        clientName = match[2].trim();\n      }\n      const ignoreWords = ['total', 'prospecoes', 'contatos', 'hoje', 'dia', 'cliente', 'clientes'];\n      if (clientName.length > 2 && !ignoreWords.some(w => clientName.toLowerCase() === w) && count > 0) {\n        reports.push({\n          client_name: clientName,\n          prospections_count: count,\n          contacts_made: 0,\n          responses_received: 0,\n          meetings_scheduled: 0,\n          reported_by: message.sender_name,\n          report_date: new Date().toISOString().split('T')[0],\n          source_message_id: message.message_id,\n          source_group: message.group_name,\n          raw_message: content,\n          db_message_id: message.db_message_id\n        });\n      }\n    }\n  }\n}\n\nconst uniqueReports = reports.reduce((acc, curr) => {\n  const existing = acc.find(r => r.client_name.toLowerCase() === curr.client_name.toLowerCase());\n  if (!existing) acc.push(curr);\n  else if (curr.prospections_count > existing.prospections_count) {\n    acc[acc.indexOf(existing)] = curr;\n  }\n  return acc;\n}, []);\n\nif (uniqueReports.length === 0) {\n  return [{ json: { skip: true, reason: 'No prospection data found', db_message_id: message.db_message_id } }];\n}\n\nreturn uniqueReports.map(report => ({ json: report }));"
+      },
+      "id": "parse-prospection",
+      "name": "Parse Prospection Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [{ "id": "check-skip", "leftValue": "={{ $json.skip }}", "rightValue": true, "operator": { "type": "boolean", "operation": "notEquals" } }],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "has-data",
+      "name": "Has Prospection Data?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.prospection_reports (\n  client_name, prospections_count, contacts_made, responses_received,\n  meetings_scheduled, reported_by, report_date, source_message_id,\n  source_group, raw_message\n) VALUES ($1, $2, $3, $4, $5, $6, $7::date, $8, $9, $10)\nON CONFLICT (client_name, report_date, reported_by)\nDO UPDATE SET\n  prospections_count = EXCLUDED.prospections_count,\n  updated_at = NOW()\nRETURNING id, client_name, prospections_count",
+        "options": {
+          "queryReplacement": "={{ [$json.client_name, $json.prospections_count, $json.contacts_made || 0, $json.responses_received || 0, $json.meetings_scheduled || 0, $json.reported_by, $json.report_date, $json.source_message_id, $json.source_group, $json.raw_message] }}"
+        }
+      },
+      "id": "insert-report",
+      "name": "Insert Prospection Report",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1250, 250],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE mottivme_intelligence_system.messages\nSET processed_by_observer = true\nWHERE id = $1\nRETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$('Parse Prospection Data').first().json.db_message_id] }}"
+        }
+      },
+      "id": "mark-processed-success",
+      "name": "Mark Message as Processed",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1450, 250],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE mottivme_intelligence_system.messages\nSET processed_by_observer = true\nWHERE id = $1\nRETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.db_message_id] }}"
+        }
+      },
+      "id": "mark-processed-skip",
+      "name": "Mark as Processed (No Data)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1250, 400],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule - Every 5min": {
+      "main": [[{ "node": "Get Lucas Messages", "type": "main", "index": 0 }]]
+    },
+    "Get Lucas Messages": {
+      "main": [[{ "node": "Extract Message Data", "type": "main", "index": 0 }]]
+    },
+    "Extract Message Data": {
+      "main": [[{ "node": "Parse Prospection Data", "type": "main", "index": 0 }]]
+    },
+    "Parse Prospection Data": {
+      "main": [[{ "node": "Has Prospection Data?", "type": "main", "index": 0 }]]
+    },
+    "Has Prospection Data?": {
+      "main": [
+        [{ "node": "Insert Prospection Report", "type": "main", "index": 0 }],
+        [{ "node": "Mark as Processed (No Data)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insert Prospection Report": {
+      "main": [[{ "node": "Mark Message as Processed", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "mis-sentinel" },
+  "tags": [{ "name": "SENTINEL" }, { "name": "Sales" }, { "name": "Prospection" }]
+}

@@ -479,7 +479,7 @@ export default function KnowledgePage() {
                                         {isExpanded && (
                                             <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t">
                                                 <div className="mt-3 sm:mt-4 prose max-w-none">
-                                                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg whitespace-pre-wrap text-sm sm:text-base">
+                                                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg whitespace-pre-wrap text-sm sm:text-base text-gray-800">
                                                         {entry.answer || entry.content}
                                                     </div>
                                                 </div>

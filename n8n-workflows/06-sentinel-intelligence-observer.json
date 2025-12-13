@@ -1,0 +1,174 @@
+{
+  "name": "MIS - SENTINEL Intelligence Observer",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule - Every 10min",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  id,\n  created_at,\n  sender_name,\n  sender_phone,\n  sender_type,\n  message_body,\n  sentiment,\n  urgency_score,\n  needs_attention,\n  keywords,\n  is_group_message,\n  group_type,\n  group_name,\n  group_sender_phone,\n  group_sender_name,\n  team_analysis,\n  workflow_name,\n  location_name\nFROM mottivme_intelligence_system.messages\nWHERE processed_by_observer = FALSE\n  AND created_at >= NOW() - INTERVAL '20 minutes'\nORDER BY created_at DESC\nLIMIT 100",
+        "options": {}
+      },
+      "id": "get-unprocessed",
+      "name": "Buscar Mensagens Não Processadas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\n\nif (items.length === 0) {\n  return [];\n}\n\n// Agrupa mensagens para análise em batch\nconst context = items.map(item => ({\n  id: item.json.id,\n  timestamp: item.json.created_at,\n  sender: item.json.is_group_message ? item.json.group_sender_name : item.json.sender_name,\n  sender_type: item.json.sender_type,\n  message: item.json.message_body,\n  sentiment: item.json.sentiment,\n  urgency: item.json.urgency_score,\n  keywords: item.json.keywords,\n  workflow: item.json.workflow_name,\n  location: item.json.location_name,\n  team_analysis: item.json.team_analysis\n}));\n\nconst prompt = `Você recebeu ${context.length} mensagens para analisar.\n\nMensagens:\n${JSON.stringify(context, null, 2)}\n\nAnalise essas mensagens e identifique:\n1. Padrões de processo (ações repetidas, sequências)\n2. Decisões sendo tomadas\n3. Gargalos operacionais\n4. Conhecimento tácito sendo compartilhado\n5. Oportunidades de automação\n\nGere insights APENAS se identificar algo significativo (3+ ocorrências similares ou algo crítico).\nCada insight deve ter evidências concretas baseadas nas mensagens.`;\n\nreturn [{\n  json: {\n    prompt: prompt,\n    message_ids: items.map(i => i.json.id),\n    total_messages: items.length,\n    context: context\n  }\n}];"
+      },
+      "id": "prepare-context",
+      "name": "Preparar Contexto para IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.prompt }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "# IDENTIDADE\nVocê é o SENTINEL - Chief Intelligence Officer de IA da Mottivme.\n\n# MISSÃO\nObservar silenciosamente operações e identificar:\n- Processos (explícitos e implícitos)\n- Padrões de decisão\n- Gargalos operacionais\n- Oportunidades de automação\n- Conhecimento tácito\n\n# REGRAS CRÍTICAS\n1. **SÓ documente padrões com 3+ evidências** ou insights críticos\n2. **SEMPRE cite exemplos concretos** das mensagens\n3. **QUANTIFIQUE** quando possível (\"7 de 10 casos\" não \"muitas vezes\")\n4. **SEJA ACIONÁVEL** - todo insight deve ter \"e daí?\"\n5. **NUNCA invente** - só documente o observado\n\n# TIPOS DE INSIGHT\n- `process_identified`: Novo processo mapeado\n- `decision_pattern`: Padrão de decisão identificado\n- `bottleneck_detected`: Gargalo operacional\n- `tacit_knowledge`: Conhecimento tácito capturado\n- `automation_opportunity`: Chance de automatizar\n- `alert`: Problema crítico que precisa atenção\n\n# FORMATO DE SAÍDA\nRetorne um array de insights. Cada insight DEVE ter:\n- `insight_type`: Um dos tipos acima\n- `title`: Título descritivo (máx 100 chars)\n- `content`: Descrição detalhada com evidências\n- `confidence`: 0.0-1.0 (baseado em quantas evidências)\n- `priority`: low/medium/high\n- `actionable_suggestion`: O que fazer com isso\n- `evidence_ids`: IDs das mensagens que geraram o insight\n\nSe não encontrar nada significativo, retorne array vazio."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [850, 300],
+      "id": "ai-agent-sentinel",
+      "name": "SENTINEL AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 0.2,
+          "maxTokens": 4000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [850, 520],
+      "id": "groq-model",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "WVbQ0d3w6cnLwPtX",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"insights\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"insight_type\": {\n            \"type\": \"string\",\n            \"enum\": [\"process_identified\", \"decision_pattern\", \"bottleneck_detected\", \"tacit_knowledge\", \"automation_opportunity\", \"alert\"]\n          },\n          \"title\": {\n            \"type\": \"string\",\n            \"maxLength\": 100\n          },\n          \"content\": {\n            \"type\": \"string\"\n          },\n          \"confidence\": {\n            \"type\": \"number\",\n            \"minimum\": 0,\n            \"maximum\": 1\n          },\n          \"priority\": {\n            \"type\": \"string\",\n            \"enum\": [\"low\", \"medium\", \"high\"]\n          },\n          \"actionable_suggestion\": {\n            \"type\": \"string\"\n          },\n          \"evidence_ids\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\"\n            }\n          }\n        },\n        \"required\": [\"insight_type\", \"title\", \"content\", \"confidence\", \"priority\", \"actionable_suggestion\", \"evidence_ids\"]\n      }\n    }\n  },\n  \"required\": [\"insights\"]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [1050, 520],
+      "id": "output-parser",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "jsCode": "const aiOutput = $input.first().json;\nconst previousContext = $('Preparar Contexto para IA').first().json;\n\nlet insights = [];\n\n// Parse do output da IA\ntry {\n  if (aiOutput?.output?.insights) {\n    insights = aiOutput.output.insights;\n  } else if (aiOutput?.insights) {\n    insights = aiOutput.insights;\n  } else if (typeof aiOutput.output === 'string') {\n    const parsed = JSON.parse(aiOutput.output);\n    insights = parsed.insights || [];\n  }\n} catch (e) {\n  console.error('Erro ao parsear insights:', e);\n  return [];\n}\n\nif (!insights || insights.length === 0) {\n  console.log('Nenhum insight gerado pela IA');\n  return [];\n}\n\n// Prepara insights para inserção no banco\nreturn insights.map(insight => ({\n  json: {\n    insight_type: insight.insight_type,\n    title: insight.title,\n    content: insight.content,\n    confidence_score: insight.confidence,\n    metadata: {\n      priority: insight.priority,\n      actionable_suggestion: insight.actionable_suggestion,\n      evidence_ids: insight.evidence_ids,\n      total_messages_analyzed: previousContext.total_messages,\n      analysis_timestamp: new Date().toISOString()\n    },\n    processed_for_kb: false\n  }\n}));"
+      },
+      "id": "parse-insights",
+      "name": "Parse e Prepara Insights",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.sentinel_insights (\n  insight_type,\n  content,\n  confidence_score,\n  metadata,\n  processed_for_kb\n) VALUES ($1, $2, $3, $4::jsonb, $5)\nRETURNING id, insight_type, confidence_score",
+        "options": {
+          "queryReplacement": "={{ [$json.insight_type, $json.title + '\\n\\n' + $json.content, $json.confidence_score, JSON.stringify($json.metadata), $json.processed_for_kb] }}"
+        }
+      },
+      "id": "insert-insights",
+      "name": "Salvar Insights",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1250, 300],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE mottivme_intelligence_system.messages\nSET processed_by_observer = true\nWHERE id = ANY($1::uuid[])\nRETURNING COUNT(*) as updated_count",
+        "options": {
+          "queryReplacement": "={{ ['{' + $('Preparar Contexto para IA').first().json.message_ids.join(',') + '}'] }}"
+        }
+      },
+      "id": "mark-processed",
+      "name": "Marcar Mensagens Processadas",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1450, 300],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule - Every 10min": {
+      "main": [[{ "node": "Buscar Mensagens Não Processadas", "type": "main", "index": 0 }]]
+    },
+    "Buscar Mensagens Não Processadas": {
+      "main": [[{ "node": "Preparar Contexto para IA", "type": "main", "index": 0 }]]
+    },
+    "Preparar Contexto para IA": {
+      "main": [[{ "node": "SENTINEL AI Agent", "type": "main", "index": 0 }]]
+    },
+    "SENTINEL AI Agent": {
+      "main": [[{ "node": "Parse e Prepara Insights", "type": "main", "index": 0 }]]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [[{ "node": "SENTINEL AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [[{ "node": "SENTINEL AI Agent", "type": "ai_outputParser", "index": 0 }]]
+    },
+    "Parse e Prepara Insights": {
+      "main": [[{ "node": "Salvar Insights", "type": "main", "index": 0 }]]
+    },
+    "Salvar Insights": {
+      "main": [[{ "node": "Marcar Mensagens Processadas", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "meta": { "instanceId": "mis-sentinel" },
+  "tags": [{ "name": "SENTINEL" }, { "name": "Intelligence" }, { "name": "Observer" }]
+}

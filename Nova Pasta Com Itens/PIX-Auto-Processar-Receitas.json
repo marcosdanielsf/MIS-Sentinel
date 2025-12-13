@@ -1,0 +1,203 @@
+{
+  "name": "PIX - Auto Processar Receitas",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// PROCESSAR COMPROVANTE PIX - RECEITAS\n// ============================================\n\nconst comprovante = $input.item.json;\n\n// Dados do comprovante\nconst valor = comprovante.valor || 0;\nconst nomePagador = comprovante.nome_pagador || 'Não identificado';\nconst dataPagamento = comprovante.data_pagamento || new Date().toISOString().split('T')[0];\nconst processadoEm = comprovante.processado_em || new Date().toISOString();\nconst codigoTransacao = comprovante.codigo_transacao || 'N/A';\nconst urlComprovante = comprovante.url_comprovante || '';\nconst nomeRecebedor = comprovante.nome_recebedor || '';\nconst descricao = comprovante.descricao || 'PIX recebido';\n\n// Retornar dados formatados para próximo node\nreturn {\n  json: {\n    comprovante_original: comprovante,\n    dados_busca: {\n      valor: valor,\n      tolerancia: 200,\n      tipo: 'receita',\n      quitado: false\n    },\n    dados_insert: {\n      tipo: 'receita',\n      valor_previsto: valor,\n      valor_real: valor,\n      fornecedor_cliente_nome: nomePagador,\n      descricao: `PIX recebido - ${descricao}`,\n      data_vencimento: dataPagamento,\n      data_quitacao: processadoEm,\n      quitado: true,\n      forma_pagamento: 'pix',\n      observacoes: `🔔 Receita criada automaticamente via comprovante PIX\\nCódigo: ${codigoTransacao}\\nPagador: ${nomePagador}\\nRecebedor: ${nomeRecebedor}\\nData: ${dataPagamento}\\nComprovante: ${urlComprovante}`,\n      categoria: 'receita_pix_automatica'\n    },\n    dados_update: {\n      data_quitacao: processadoEm,\n      forma_pagamento: 'pix',\n      observacao_adicional: `\\n🔔 Pagamento confirmado via PIX\\nCódigo: ${codigoTransacao}\\nPagador: ${nomePagador}\\nData: ${dataPagamento}\\nComprovante: ${urlComprovante}`\n    }\n  }\n};"
+      },
+      "id": "node-preparar-dados",
+      "name": "1. Preparar Dados",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  id,\n  tipo,\n  valor_previsto,\n  fornecedor_cliente_nome,\n  descricao,\n  data_vencimento,\n  quitado,\n  ABS(valor_previsto - {{ $json.dados_busca.valor }}) as diferenca\nFROM movimentacoes_financeiras \nWHERE tipo = '{{ $json.dados_busca.tipo }}'\n  AND quitado = {{ $json.dados_busca.quitado }}\n  AND ABS(valor_previsto - {{ $json.dados_busca.valor }}) < {{ $json.dados_busca.tolerancia }}\nORDER BY diferenca ASC\nLIMIT 1",
+        "options": {}
+      },
+      "id": "node-buscar-receita",
+      "name": "2. Buscar Receita Pendente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [650, 300],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-encontrou",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "node-if-encontrou",
+      "name": "3. IF - Encontrou Receita?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE movimentacoes_financeiras \nSET \n  quitado = true,\n  data_quitacao = TIMESTAMP '{{ $('1. Preparar Dados').item.json.dados_update.data_quitacao }}',\n  forma_pagamento = '{{ $('1. Preparar Dados').item.json.dados_update.forma_pagamento }}',\n  observacoes = CONCAT(\n    COALESCE(observacoes, ''),\n    '{{ $('1. Preparar Dados').item.json.dados_update.observacao_adicional }}'\n  )\nWHERE id = '{{ $json.id }}'\nRETURNING *",
+        "options": {}
+      },
+      "id": "node-update-receita",
+      "name": "4. Atualizar Receita",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1050, 200],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO movimentacoes_financeiras (\n  tipo,\n  valor_previsto,\n  valor_real,\n  fornecedor_cliente_nome,\n  descricao,\n  data_vencimento,\n  data_quitacao,\n  quitado,\n  forma_pagamento,\n  observacoes,\n  categoria\n) VALUES (\n  '{{ $('1. Preparar Dados').item.json.dados_insert.tipo }}',\n  {{ $('1. Preparar Dados').item.json.dados_insert.valor_previsto }},\n  {{ $('1. Preparar Dados').item.json.dados_insert.valor_real }},\n  '{{ $('1. Preparar Dados').item.json.dados_insert.fornecedor_cliente_nome }}',\n  '{{ $('1. Preparar Dados').item.json.dados_insert.descricao }}',\n  DATE '{{ $('1. Preparar Dados').item.json.dados_insert.data_vencimento }}',\n  TIMESTAMP '{{ $('1. Preparar Dados').item.json.dados_insert.data_quitacao }}',\n  {{ $('1. Preparar Dados').item.json.dados_insert.quitado }},\n  '{{ $('1. Preparar Dados').item.json.dados_insert.forma_pagamento }}',\n  '{{ $('1. Preparar Dados').item.json.dados_insert.observacoes }}',\n  '{{ $('1. Preparar Dados').item.json.dados_insert.categoria }}'\n)\nRETURNING *",
+        "options": {}
+      },
+      "id": "node-insert-receita",
+      "name": "5. Criar Nova Receita",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1050, 400],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "node-merge",
+      "name": "6. Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.item.json;\nconst preparado = $('1. Preparar Dados').item.json;\n\nconst acao = data.categoria ? 'criada' : 'atualizada';\nconst valor = data.valor_previsto || data.valor_real;\n\nreturn {\n  json: {\n    sucesso: true,\n    acao: acao,\n    movimentacao_id: data.id,\n    valor: valor,\n    comprovante: preparado.comprovante_original,\n    mensagem: acao === 'criada'\n      ? `✅ Nova receita de R$ ${valor} criada automaticamente`\n      : `✅ Receita de R$ ${valor} marcada como quitada`,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "node-resultado-final",
+      "name": "7. Resultado Final",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "1. Preparar Dados": {
+      "main": [
+        [
+          {
+            "node": "2. Buscar Receita Pendente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Buscar Receita Pendente": {
+      "main": [
+        [
+          {
+            "node": "3. IF - Encontrou Receita?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. IF - Encontrou Receita?": {
+      "main": [
+        [
+          {
+            "node": "4. Atualizar Receita",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "5. Criar Nova Receita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Atualizar Receita": {
+      "main": [
+        [
+          {
+            "node": "6. Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Criar Nova Receita": {
+      "main": [
+        [
+          {
+            "node": "6. Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "6. Merge": {
+      "main": [
+        [
+          {
+            "node": "7. Resultado Final",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-12-12T17:30:00.000Z",
+  "versionId": "1"
+}

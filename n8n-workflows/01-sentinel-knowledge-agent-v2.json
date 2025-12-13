@@ -1,4 +1,5 @@
 {
+  "name": "SENTINEL Knowledge Agent v2 - Enhanced AI",
   "nodes": [
     {
       "parameters": {
@@ -11,14 +12,11 @@
           ]
         }
       },
-      "id": "79c10b28-3960-4b83-bbe0-56bed56fd800",
+      "id": "trigger-schedule",
       "name": "Run Every 6 Hours",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [
-        -10032,
-        480
-      ]
+      "position": [250, 300]
     },
     {
       "parameters": {
@@ -26,15 +24,11 @@
         "query": "SELECT id, insight_type, content, confidence_score, metadata, created_at\nFROM mottivme_intelligence_system.sentinel_insights\nWHERE processed_for_kb = false\n  AND insight_type IN ('pattern', 'solution', 'recommendation')\nORDER BY confidence_score DESC, created_at DESC\nLIMIT 50",
         "options": {}
       },
-      "id": "8df5a57e-e611-4d54-8bd0-dedc0d16ad58",
+      "id": "get-unprocessed-insights",
       "name": "Get Unprocessed Insights",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -9824,
-        480
-      ],
-      "alwaysOutputData": true,
+      "position": [450, 300],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -48,15 +42,11 @@
         "query": "SELECT title, content, tags, category, created_at\nFROM mottivme_intelligence_system.knowledge_base\nWHERE created_at >= NOW() - INTERVAL '7 days'\nORDER BY created_at DESC\nLIMIT 20",
         "options": {}
       },
-      "id": "3300d0c6-8971-4680-8f92-d82567ebe831",
+      "id": "get-recent-kb",
       "name": "Get Recent KB Entries",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -9824,
-        624
-      ],
-      "alwaysOutputData": true,
+      "position": [450, 450],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -66,29 +56,24 @@
     },
     {
       "parameters": {
+        "batchSize": 1,
         "options": {}
       },
-      "id": "1fd415c1-2cbc-4ed0-89bd-5e3efafc23bb",
+      "id": "split-insights",
       "name": "Process One by One",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
-      "position": [
-        -9632,
-        480
-      ]
+      "position": [650, 300]
     },
     {
       "parameters": {
         "jsCode": "// Prepare enhanced prompt with context\nconst item = $input.first().json;\nconst recentKB = $('Get Recent KB Entries').all().map(k => k.json);\n\n// Build context from recent KB entries\nconst recentContext = recentKB.length > 0 \n  ? recentKB.slice(0, 5).map(kb => `- ${kb.title} [${kb.category}]`).join('\\n')\n  : 'Nenhuma entrada recente';\n\nconst prompt = `Analise este insight e decida se deve virar uma entrada de Knowledge Base.\n\n## INSIGHT A ANALISAR\nTipo: ${item.insight_type}\nConteúdo: ${item.content}\nConfiança: ${item.confidence_score}\nContexto: ${JSON.stringify(item.metadata || {})}\n\n## ENTRADAS RECENTES NA KB (últimos 7 dias)\n${recentContext}\n\n## SUA TAREFA\n1. Verifique se já existe entrada similar nas entradas recentes\n2. Avalie se o insight traz valor único para a KB\n3. Se SIM, crie uma entrada estruturada\n4. Se NÃO, explique o motivo\n\n## RESPOSTA OBRIGATÓRIA (JSON puro, sem markdown):\n{\n  \"should_create\": true/false,\n  \"reason\": \"Explicação da decisão\",\n  \"is_duplicate\": true/false,\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"Título claro e objetivo (max 100 chars)\",\n  \"content\": \"Conteúdo detalhado, útil e acionável\",\n  \"tags\": [\"tag1\", \"tag2\", \"tag3\"],\n  \"priority\": 1-5\n}`;\n\nreturn [{\n  json: {\n    prompt: prompt,\n    insight_id: item.id,\n    original_content: item.content,\n    insight_type: item.insight_type\n  }\n}];"
       },
-      "id": "9bf366fd-4a7a-4c11-b098-2bbc1d8eff29",
+      "id": "prepare-enhanced-prompt",
       "name": "Prepare Enhanced Prompt",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -9424,
-        480
-      ]
+      "position": [850, 300]
     },
     {
       "parameters": {
@@ -96,30 +81,55 @@
         "text": "={{ $json.prompt }}",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "=# IDENTIDADE\nVocê é o SENTINEL Knowledge Agent v2 - um sistema de curadoria inteligente de Knowledge Base.\n\n# MISSÃO\nTransformar insights valiosos em entradas de KB estruturadas, evitando duplicatas e mantendo alta qualidade.\n\n# REGRAS DE CURADORIA\n\n## 1. VERIFICAÇÃO DE DUPLICATAS\n- Compare o insight com entradas recentes da KB\n- Se encontrar conteúdo similar (>70% overlap semântico), marque is_duplicate: true\n- Mesmo conteúdo com palavras diferentes = duplicata\n\n## 2. CRITÉRIOS DE QUALIDADE\nCrie entrada APENAS se:\n- ✅ Traz informação acionável e específica\n- ✅ É relevante para CS/suporte\n- ✅ Não é duplicata\n- ✅ Tem confiança >= 0.7\n- ❌ NÃO criar se: muito genérico, óbvio, ou vago\n\n## 3. CATEGORIZAÇÃO\n- **faq**: Pergunta frequente de cliente\n- **solution**: Solução para problema específico\n- **process**: Processo ou workflow\n- **best_practice**: Melhores práticas\n\n## 4. ESTRUTURA DO CONTEÚDO\n- Título: Claro, objetivo, searchable\n- Conteúdo: Detalhado, com passos se aplicável\n- Tags: 3-5 tags relevantes (lowercase, sem acentos)\n- Prioridade: 1=baixa, 3=média, 5=crítica\n\n# OUTPUT OBRIGATÓRIO\n\nResponda SEMPRE com JSON puro (sem ```json, sem markdown):\n\n{\n  \"should_create\": boolean,\n  \"reason\": \"string\",\n  \"is_duplicate\": boolean,\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"string\",\n  \"content\": \"string\",\n  \"tags\": [\"string\"],\n  \"priority\": number\n}\n\nSe should_create=false, apenas reason é obrigatório."
+          "systemMessage": "# IDENTIDADE\nVocê é o SENTINEL Knowledge Agent v2 - um sistema de curadoria inteligente de Knowledge Base.\n\n# MISSÃO\nTransformar insights valiosos em entradas de KB estruturadas, evitando duplicatas e mantendo alta qualidade.\n\n# REGRAS DE CURADORIA\n\n## 1. VERIFICAÇÃO DE DUPLICATAS\n- Compare o insight com entradas recentes da KB\n- Se encontrar conteúdo similar (>70% overlap semântico), marque is_duplicate: true\n- Mesmo conteúdo com palavras diferentes = duplicata\n\n## 2. CRITÉRIOS DE QUALIDADE\nCrie entrada APENAS se:\n- ✅ Traz informação acionável e específica\n- ✅ É relevante para CS/suporte\n- ✅ Não é duplicata\n- ✅ Tem confiança >= 0.7\n- ❌ NÃO criar se: muito genérico, óbvio, ou vago\n\n## 3. CATEGORIZAÇÃO\n- **faq**: Pergunta frequente de cliente\n- **solution**: Solução para problema específico\n- **process**: Processo ou workflow\n- **best_practice**: Melhores práticas\n\n## 4. ESTRUTURA DO CONTEÚDO\n- Título: Claro, objetivo, searchable\n- Conteúdo: Detalhado, com passos se aplicável\n- Tags: 3-5 tags relevantes (lowercase, sem acentos)\n- Prioridade: 1=baixa, 3=média, 5=crítica\n\n# OUTPUT OBRIGATÓRIO\n\nResponda SEMPRE com JSON puro (sem ```json, sem markdown):\n\n{\n  \"should_create\": boolean,\n  \"reason\": \"string\",\n  \"is_duplicate\": boolean,\n  \"category\": \"faq|solution|process|best_practice\",\n  \"title\": \"string\",\n  \"content\": \"string\",\n  \"tags\": [\"string\"],\n  \"priority\": number\n}\n\nSe should_create=false, apenas reason é obrigatório."
         }
       },
-      "id": "e2cce921-6819-4703-940a-33bea26fdd61",
+      "id": "knowledge-agent-v2",
       "name": "Knowledge Curator Agent v2",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.7,
-      "position": [
-        -9312,
-        288
-      ]
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {
+          "temperature": 0.3,
+          "maxTokens": 2000
+        }
+      },
+      "id": "groq-model",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [1050, 500],
+      "credentials": {
+        "groqApi": {
+          "id": "WVbQ0d3w6cnLwPtX",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "fromJson",
+        "jsonSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"should_create\": { \"type\": \"boolean\" },\n    \"reason\": { \"type\": \"string\" },\n    \"is_duplicate\": { \"type\": \"boolean\" },\n    \"category\": { \"type\": \"string\", \"enum\": [\"faq\", \"solution\", \"process\", \"best_practice\"] },\n    \"title\": { \"type\": \"string\" },\n    \"content\": { \"type\": \"string\" },\n    \"tags\": { \"type\": \"array\", \"items\": { \"type\": \"string\" } },\n    \"priority\": { \"type\": \"number\", \"minimum\": 1, \"maximum\": 5 }\n  },\n  \"required\": [\"should_create\", \"reason\"]\n}"
+      },
+      "id": "output-parser",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [1050, 650]
     },
     {
       "parameters": {
         "jsCode": "// Enhanced parsing with retry logic\nconst aiResponse = $input.first().json;\nconst preparedData = $('Prepare Enhanced Prompt').first().json;\n\nlet parsed;\ntry {\n  // Try multiple extraction methods\n  let content = aiResponse.output || aiResponse.text || aiResponse.json || JSON.stringify(aiResponse);\n  \n  // Clean markdown artifacts\n  content = content.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n  \n  // Try direct parse\n  try {\n    parsed = typeof content === 'string' ? JSON.parse(content) : content;\n  } catch {\n    // Extract JSON from text\n    const match = content.match(/\\{[\\s\\S]*?\\}/g);\n    if (match && match.length > 0) {\n      // Get the largest JSON object (likely the complete one)\n      const largest = match.reduce((a, b) => a.length > b.length ? a : b);\n      parsed = JSON.parse(largest);\n    }\n  }\n  \n  // Validate parsed object\n  if (!parsed || typeof parsed.should_create === 'undefined') {\n    throw new Error('Invalid response structure');\n  }\n  \n} catch (error) {\n  // Fallback: mark as failed for retry\n  return [{\n    json: {\n      parse_failed: true,\n      skip: true,\n      insight_id: preparedData.insight_id,\n      reason: `Parse error: ${error.message}`,\n      raw_response: aiResponse\n    }\n  }];\n}\n\n// Check if should skip\nif (!parsed.should_create || parsed.is_duplicate) {\n  return [{\n    json: {\n      skip: true,\n      insight_id: preparedData.insight_id,\n      reason: parsed.reason || 'Not relevant or duplicate',\n      is_duplicate: parsed.is_duplicate || false\n    }\n  }];\n}\n\n// Valid entry to create\nreturn [{\n  json: {\n    skip: false,\n    insight_id: preparedData.insight_id,\n    insight_type: preparedData.insight_type,\n    knowledge_entry: {\n      category: parsed.category || 'solution',\n      title: (parsed.title || '').substring(0, 100),\n      content: parsed.content || '',\n      tags: Array.isArray(parsed.tags) ? parsed.tags.slice(0, 5) : [],\n      priority: Math.min(5, Math.max(1, parsed.priority || 3)),\n      source: 'sentinel_ai_v2',\n      source_insight_id: preparedData.insight_id,\n      status: 'published'\n    },\n    ai_reason: parsed.reason\n  }\n}];"
       },
-      "id": "ec2b6160-77a9-45d3-af13-cf3a450eb49d",
+      "id": "parse-enhanced-response",
       "name": "Parse & Validate Response",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -9024,
-        480
-      ]
+      "position": [1250, 300]
     },
     {
       "parameters": {
@@ -144,14 +154,11 @@
         },
         "options": {}
       },
-      "id": "c03ef648-fa19-414a-8b0c-167f4f2362ad",
+      "id": "check-should-create",
       "name": "Should Create Entry?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        -8832,
-        480
-      ]
+      "position": [1450, 300]
     },
     {
       "parameters": {
@@ -161,14 +168,11 @@
           "queryReplacement": "={{ [$json.knowledge_entry.title, $json.knowledge_entry.content] }}"
         }
       },
-      "id": "2995c196-0a60-4602-b521-d5822a7179af",
+      "id": "similarity-check",
       "name": "Similarity Check (Final)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -8624,
-        368
-      ],
+      "position": [1650, 200],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -199,31 +203,25 @@
         },
         "options": {}
       },
-      "id": "1d41efe7-1fca-47f8-af06-7d1c909959be",
+      "id": "check-no-duplicates",
       "name": "No Duplicates?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [
-        -8432,
-        480
-      ]
+      "position": [1850, 300]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "INSERT INTO mottivme_intelligence_system.knowledge_base (\n  category, title, content, tags, priority, source, source_insight_id, status, helpful_count, not_helpful_count\n) VALUES ($1, $2, $3, $4::jsonb::text[], $5, $6, $7::uuid, $8, 0, 0)\nRETURNING id, title",
+        "query": "INSERT INTO mottivme_intelligence_system.knowledge_base (\n  category, title, content, tags, priority, source, source_insight_id, status, usage_count, helpful_votes, not_helpful_count, created_by\n) VALUES ($1, $2, $3, $4::jsonb::text[], $5, $6, $7::uuid, $8, 0, 0, 0, 'SENTINEL AI')\nRETURNING id, title",
         "options": {
           "queryReplacement": "={{ [\n  $('Parse & Validate Response').first().json.knowledge_entry.category,\n  $('Parse & Validate Response').first().json.knowledge_entry.title,\n  $('Parse & Validate Response').first().json.knowledge_entry.content,\n  JSON.stringify($('Parse & Validate Response').first().json.knowledge_entry.tags || []),\n  $('Parse & Validate Response').first().json.knowledge_entry.priority,\n  $('Parse & Validate Response').first().json.knowledge_entry.source,\n  $('Parse & Validate Response').first().json.knowledge_entry.source_insight_id,\n  $('Parse & Validate Response').first().json.knowledge_entry.status\n] }}"
         }
       },
-      "id": "bb76f120-0075-4075-92dd-7d04086f6c79",
+      "id": "insert-knowledge",
       "name": "Insert to Knowledge Base",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -8224,
-        416
-      ],
+      "position": [2050, 250],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -239,14 +237,11 @@
           "queryReplacement": "={{ [$('Parse & Validate Response').first().json.insight_id] }}"
         }
       },
-      "id": "e1ee86b9-dadb-4091-9a44-2cc8634c8bf8",
+      "id": "mark-processed-success",
       "name": "Mark as Processed (Created)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -8032,
-        480
-      ],
+      "position": [2250, 300],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -262,14 +257,11 @@
           "queryReplacement": "={{ [$json.insight_id] }}"
         }
       },
-      "id": "2618d74f-3df4-437b-b404-dbb56a511e4b",
+      "id": "mark-processed-skipped",
       "name": "Mark as Processed (Skipped)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -8624,
-        624
-      ],
+      "position": [1650, 450],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -285,14 +277,11 @@
           "queryReplacement": "={{ [$('Parse & Validate Response').first().json.insight_id] }}"
         }
       },
-      "id": "31fda0c1-4f02-4234-a7ee-2445b8ed65ed",
+      "id": "mark-processed-duplicate",
       "name": "Mark as Processed (Duplicate)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -8224,
-        624
-      ],
+      "position": [2050, 450],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
@@ -304,14 +293,11 @@
       "parameters": {
         "jsCode": "// Aggregate metrics from all processed items\nconst allData = $input.all();\n\nconst metrics = {\n  total_processed: allData.length,\n  created: 0,\n  skipped: 0,\n  duplicates: 0,\n  parse_errors: 0,\n  by_category: {},\n  avg_priority: 0\n};\n\nlet totalPriority = 0;\nlet priorityCount = 0;\n\nallData.forEach(item => {\n  const data = item.json;\n  \n  if (data.skip) {\n    if (data.is_duplicate) {\n      metrics.duplicates++;\n    } else if (data.parse_failed) {\n      metrics.parse_errors++;\n    } else {\n      metrics.skipped++;\n    }\n  } else if (data.knowledge_entry) {\n    metrics.created++;\n    const cat = data.knowledge_entry.category || 'unknown';\n    metrics.by_category[cat] = (metrics.by_category[cat] || 0) + 1;\n    \n    if (data.knowledge_entry.priority) {\n      totalPriority += data.knowledge_entry.priority;\n      priorityCount++;\n    }\n  }\n});\n\nmetrics.avg_priority = priorityCount > 0 ? (totalPriority / priorityCount).toFixed(2) : 0;\n\nconst timestamp = new Date().toISOString();\n\nreturn [{\n  json: {\n    execution_time: timestamp,\n    metrics: metrics,\n    summary: `Processados: ${metrics.total_processed} | Criados: ${metrics.created} | Pulados: ${metrics.skipped} | Duplicatas: ${metrics.duplicates} | Erros: ${metrics.parse_errors}`\n  }\n}];"
       },
-      "id": "32d92bc5-65b0-4ced-832e-5220f59ec7e1",
+      "id": "collect-metrics",
       "name": "Collect Execution Metrics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [
-        -7824,
-        480
-      ]
+      "position": [2450, 300]
     },
     {
       "parameters": {
@@ -321,281 +307,97 @@
           "queryReplacement": "={{ [$json.summary, JSON.stringify($json.metrics)] }}"
         }
       },
-      "id": "5b55068e-6413-4117-8902-96225a9b5002",
+      "id": "save-metrics",
       "name": "Save Metrics to DB",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.6,
-      "position": [
-        -7632,
-        480
-      ],
+      "position": [2650, 300],
       "credentials": {
         "postgres": {
           "id": "w2mBaRwhZ3tM4FUw",
           "name": "Postgres Marcos Daniels."
         }
       }
-    },
-    {
-      "parameters": {
-        "model": "llama-3.3-70b-versatile",
-        "options": {
-          "temperature": 0.3
-        }
-      },
-      "id": "948093f2-6d2f-4727-bdb3-bc9b9364b50d",
-      "name": "Groq Chat Model5",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
-      "typeVersion": 1,
-      "position": [
-        -9232,
-        672
-      ],
-      "credentials": {
-        "groqApi": {
-          "id": "WVbQ0d3w6cnLwPtX",
-          "name": "Groq account"
-        }
-      }
-    },
-    {
-      "parameters": {},
-      "id": "9cce50b5-88b3-4d5f-9a7d-1e321c7cc19a",
-      "name": "Structured Output Parser3",
-      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-      "typeVersion": 1.2,
-      "position": [
-        -9232,
-        816
-      ]
     }
   ],
   "connections": {
     "Run Every 6 Hours": {
-      "main": [
-        [
-          {
-            "node": "Get Unprocessed Insights",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Get Recent KB Entries",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[
+        { "node": "Get Unprocessed Insights", "type": "main", "index": 0 },
+        { "node": "Get Recent KB Entries", "type": "main", "index": 0 }
+      ]]
     },
     "Get Unprocessed Insights": {
-      "main": [
-        [
-          {
-            "node": "Process One by One",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Get Recent KB Entries": {
-      "main": [
-        [
-          {
-            "node": "Process One by One",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Process One by One", "type": "main", "index": 0 }]]
     },
     "Process One by One": {
-      "main": [
-        [
-          {
-            "node": "Prepare Enhanced Prompt",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Prepare Enhanced Prompt", "type": "main", "index": 0 }]]
     },
     "Prepare Enhanced Prompt": {
-      "main": [
-        [
-          {
-            "node": "Knowledge Curator Agent v2",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Knowledge Curator Agent v2", "type": "main", "index": 0 }]]
     },
     "Knowledge Curator Agent v2": {
-      "main": [
-        [
-          {
-            "node": "Parse & Validate Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Parse & Validate Response", "type": "main", "index": 0 }]]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [[{ "node": "Knowledge Curator Agent v2", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [[{ "node": "Knowledge Curator Agent v2", "type": "ai_outputParser", "index": 0 }]]
     },
     "Parse & Validate Response": {
-      "main": [
-        [
-          {
-            "node": "Should Create Entry?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Should Create Entry?", "type": "main", "index": 0 }]]
     },
     "Should Create Entry?": {
       "main": [
-        [
-          {
-            "node": "Similarity Check (Final)",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Mark as Processed (Skipped)",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Similarity Check (Final)", "type": "main", "index": 0 }],
+        [{ "node": "Mark as Processed (Skipped)", "type": "main", "index": 0 }]
       ]
     },
     "Similarity Check (Final)": {
-      "main": [
-        [
-          {
-            "node": "No Duplicates?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "No Duplicates?", "type": "main", "index": 0 }]]
     },
     "No Duplicates?": {
       "main": [
-        [
-          {
-            "node": "Insert to Knowledge Base",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Mark as Processed (Duplicate)",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{ "node": "Insert to Knowledge Base", "type": "main", "index": 0 }],
+        [{ "node": "Mark as Processed (Duplicate)", "type": "main", "index": 0 }]
       ]
     },
     "Insert to Knowledge Base": {
-      "main": [
-        [
-          {
-            "node": "Mark as Processed (Created)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Mark as Processed (Created)", "type": "main", "index": 0 }]]
     },
     "Mark as Processed (Created)": {
-      "main": [
-        [
-          {
-            "node": "Process One by One",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Collect Execution Metrics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[
+        { "node": "Process One by One", "type": "main", "index": 0 },
+        { "node": "Collect Execution Metrics", "type": "main", "index": 0 }
+      ]]
     },
     "Mark as Processed (Skipped)": {
-      "main": [
-        [
-          {
-            "node": "Process One by One",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Collect Execution Metrics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[
+        { "node": "Process One by One", "type": "main", "index": 0 },
+        { "node": "Collect Execution Metrics", "type": "main", "index": 0 }
+      ]]
     },
     "Mark as Processed (Duplicate)": {
-      "main": [
-        [
-          {
-            "node": "Process One by One",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Collect Execution Metrics",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[
+        { "node": "Process One by One", "type": "main", "index": 0 },
+        { "node": "Collect Execution Metrics", "type": "main", "index": 0 }
+      ]]
     },
     "Collect Execution Metrics": {
-      "main": [
-        [
-          {
-            "node": "Save Metrics to DB",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Groq Chat Model5": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Knowledge Curator Agent v2",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Structured Output Parser3": {
-      "ai_outputParser": [
-        [
-          {
-            "node": "Knowledge Curator Agent v2",
-            "type": "ai_outputParser",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{ "node": "Save Metrics to DB", "type": "main", "index": 0 }]]
     }
   },
-  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
   "meta": {
-    "templateCredsSetupCompleted": true,
-    "instanceId": "9d65e6caa0e89e696b77790e020391d74468b15f71b3dcdb63aad81f090f5e69"
-  }
+    "instanceId": "mis-sentinel"
+  },
+  "tags": [
+    { "name": "SENTINEL" },
+    { "name": "Knowledge" },
+    { "name": "AI-Enhanced" }
+  ]
 }

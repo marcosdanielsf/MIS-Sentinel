@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
-import DateFilter, { DateRange } from '@/components/DateFilter';
 import {
     BookOpen,
     Search,
@@ -212,102 +211,101 @@ export default function KnowledgePage() {
         <div className="flex min-h-screen bg-gray-100">
             <Sidebar />
 
-            <div className="flex-1 overflow-auto">
-                <div className="p-8">
-                    <div className="flex items-center justify-between mb-8">
+            <div className="flex-1 overflow-auto pt-14 lg:pt-0">
+                <div className="p-4 sm:p-6 lg:p-8">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">📚 Knowledge Base</h1>
-                            <p className="mt-2 text-gray-600">
-                                FAQs, soluções e conhecimento documentado pelo SENTINEL
+                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">📚 Knowledge Base</h1>
+                            <p className="mt-1 text-sm sm:text-base text-gray-600">
+                                FAQs, soluções e conhecimento documentado
                             </p>
                         </div>
                         <button
                             onClick={() => setShowAddForm(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto text-sm sm:text-base"
                         >
                             <Plus className="h-5 w-5" />
                             Adicionar
                         </button>
                     </div>
 
-                    {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <div className="bg-white p-6 rounded-lg shadow">
+                    {/* Stats - Grid 2x2 em mobile */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
+                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Total de Entradas</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600">Total</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-0.5">{stats.total}</p>
                                 </div>
-                                <BookOpen className="h-12 w-12 text-indigo-500" />
+                                <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-indigo-500" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">FAQs</p>
-                                    <p className="text-3xl font-bold text-blue-600 mt-1">{stats.faqs}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600">FAQs</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-0.5">{stats.faqs}</p>
                                 </div>
-                                <HelpCircle className="h-12 w-12 text-blue-500" />
+                                <HelpCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-blue-500" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Soluções</p>
-                                    <p className="text-3xl font-bold text-green-600 mt-1">{stats.solutions}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600">Soluções</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-0.5">{stats.solutions}</p>
                                 </div>
-                                <CheckCircle className="h-12 w-12 text-green-500" />
+                                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-green-500" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Processos</p>
-                                    <p className="text-3xl font-bold text-purple-600 mt-1">{stats.processes}</p>
+                                    <p className="text-xs sm:text-sm text-gray-600">Processos</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mt-0.5">{stats.processes}</p>
                                 </div>
-                                <FileText className="h-12 w-12 text-purple-500" />
+                                <FileText className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-purple-500" />
                             </div>
                         </div>
                     </div>
 
                     {/* Search and Filters */}
-                    <div className="bg-white p-6 rounded-lg shadow mb-6">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="flex-1 relative">
+                    <div className="bg-white p-4 sm:p-6 rounded-lg shadow mb-4 sm:mb-6">
+                        <div className="flex flex-col gap-3 sm:gap-4">
+                            <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
                                 <input
                                     type="text"
-                                    placeholder="Buscar por pergunta, resposta ou tags..."
+                                    placeholder="Buscar..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                                 />
                             </div>
 
-                            <div>
-                                <select
-                                    value={filterCategory}
-                                    onChange={(e) => setFilterCategory(e.target.value)}
-                                    className="px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                >
-                                    <option value="all">Todas Categorias</option>
-                                    <option value="faq">FAQs</option>
-                                    <option value="solution">Soluções</option>
-                                    <option value="process">Processos</option>
-                                    <option value="best_practice">Boas Práticas</option>
-                                </select>
-                            </div>
+                            <select
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value)}
+                                className="w-full sm:w-auto px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                            >
+                                <option value="all">Todas Categorias</option>
+                                <option value="faq">FAQs</option>
+                                <option value="solution">Soluções</option>
+                                <option value="process">Processos</option>
+                                <option value="best_practice">Boas Práticas</option>
+                            </select>
                         </div>
                     </div>
 
                     {/* Add Form Modal */}
                     {showAddForm && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                                <h2 className="text-xl font-semibold mb-4">Adicionar ao Knowledge Base</h2>
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+                                <h2 className="text-lg sm:text-xl font-semibold mb-4">Adicionar ao Knowledge Base</h2>
 
                                 <div className="space-y-4">
                                     <div>
@@ -315,7 +313,7 @@ export default function KnowledgePage() {
                                         <select
                                             value={newEntry.category}
                                             onChange={(e) => setNewEntry({ ...newEntry, category: e.target.value })}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
                                         >
                                             <option value="faq">FAQ</option>
                                             <option value="solution">Solução</option>
@@ -332,7 +330,7 @@ export default function KnowledgePage() {
                                                     type="text"
                                                     value={newEntry.question}
                                                     onChange={(e) => setNewEntry({ ...newEntry, question: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
                                                     placeholder="Ex: Como faço para..."
                                                 />
                                             </div>
@@ -341,8 +339,8 @@ export default function KnowledgePage() {
                                                 <textarea
                                                     value={newEntry.answer}
                                                     onChange={(e) => setNewEntry({ ...newEntry, answer: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                                                    rows={5}
+                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                                    rows={4}
                                                     placeholder="A resposta detalhada..."
                                                 />
                                             </div>
@@ -355,7 +353,7 @@ export default function KnowledgePage() {
                                                     type="text"
                                                     value={newEntry.title}
                                                     onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
                                                     placeholder="Título do documento"
                                                 />
                                             </div>
@@ -364,8 +362,8 @@ export default function KnowledgePage() {
                                                 <textarea
                                                     value={newEntry.content}
                                                     onChange={(e) => setNewEntry({ ...newEntry, content: e.target.value })}
-                                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                                                    rows={8}
+                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                                    rows={6}
                                                     placeholder="O conteúdo completo..."
                                                 />
                                             </div>
@@ -378,22 +376,22 @@ export default function KnowledgePage() {
                                             type="text"
                                             value={newEntry.tags}
                                             onChange={(e) => setNewEntry({ ...newEntry, tags: e.target.value })}
-                                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                                            className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
                                             placeholder="vendas, cliente, processo"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex justify-end gap-3 mt-6">
+                                <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6">
                                     <button
                                         onClick={() => setShowAddForm(false)}
-                                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                                        className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={handleAddEntry}
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                        className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm sm:text-base"
                                     >
                                         Salvar
                                     </button>
@@ -403,17 +401,17 @@ export default function KnowledgePage() {
                     )}
 
                     {/* Knowledge List */}
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                         {loadingData ? (
-                            <div className="bg-white p-12 rounded-lg shadow text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando knowledge base...</p>
+                            <div className="bg-white p-8 sm:p-12 rounded-lg shadow text-center">
+                                <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-indigo-600 mx-auto"></div>
+                                <p className="mt-4 text-sm sm:text-base text-gray-600">Carregando knowledge base...</p>
                             </div>
                         ) : filteredEntries.length === 0 ? (
-                            <div className="bg-white p-12 rounded-lg shadow text-center">
-                                <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                                <p className="text-gray-900 font-semibold text-lg">Nenhuma entrada encontrada</p>
-                                <p className="text-gray-500 mt-2">
+                            <div className="bg-white p-8 sm:p-12 rounded-lg shadow text-center">
+                                <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
+                                <p className="text-gray-900 font-semibold text-base sm:text-lg">Nenhuma entrada encontrada</p>
+                                <p className="text-gray-500 mt-2 text-sm sm:text-base">
                                     {searchTerm || filterCategory !== 'all'
                                         ? 'Tente ajustar sua busca ou filtros'
                                         : 'Comece adicionando conhecimento ao sistema'}
@@ -427,62 +425,67 @@ export default function KnowledgePage() {
                                 return (
                                     <div key={entry.id} className="bg-white rounded-lg shadow overflow-hidden">
                                         <div
-                                            className="p-6 cursor-pointer hover:bg-gray-50"
+                                            className="p-4 sm:p-6 cursor-pointer hover:bg-gray-50"
                                             onClick={() => toggleExpand(entry.id)}
                                         >
-                                            <div className="flex items-start gap-4">
-                                                <div className={`p-3 rounded-lg ${categoryColors[entry.category] || 'bg-gray-100'}`}>
-                                                    <Icon className="h-6 w-6" />
+                                            <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                                                {/* Icon - hidden on very small screens */}
+                                                <div className={`hidden sm:flex p-2 sm:p-3 rounded-lg ${categoryColors[entry.category] || 'bg-gray-100'}`}>
+                                                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                                                 </div>
 
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${categoryColors[entry.category]}`}>
+                                                <div className="flex-1 min-w-0">
+                                                    {/* Tags row */}
+                                                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
+                                                        <span className={`px-2 py-0.5 sm:py-1 rounded-full text-xs font-semibold ${categoryColors[entry.category]}`}>
                                                             {categoryLabels[entry.category] || entry.category}
                                                         </span>
-                                                        {entry.tags?.slice(0, 3).map((tag, idx) => (
-                                                            <span key={idx} className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs flex items-center gap-1">
+                                                        {entry.tags?.slice(0, 2).map((tag, idx) => (
+                                                            <span key={idx} className="hidden sm:flex px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 rounded-full text-xs items-center gap-1">
                                                                 <Tag className="h-3 w-3" />
                                                                 {tag}
                                                             </span>
                                                         ))}
                                                     </div>
 
-                                                    <h3 className="text-lg font-semibold text-gray-900">
+                                                    <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 line-clamp-2">
                                                         {entry.question || entry.title}
                                                     </h3>
 
                                                     {!isExpanded && (
-                                                        <p className="text-gray-600 mt-2 line-clamp-2">
+                                                        <p className="text-gray-600 mt-1.5 sm:mt-2 line-clamp-2 text-xs sm:text-sm">
                                                             {entry.answer || entry.content}
                                                         </p>
                                                     )}
                                                 </div>
 
-                                                <div className="flex items-center gap-4 text-sm text-gray-500">
-                                                    <span className="flex items-center gap-1">
-                                                        <Eye className="h-4 w-4" />
-                                                        {entry.usage_count || 0}
-                                                    </span>
-                                                    <span className="flex items-center gap-1">
-                                                        <ThumbsUp className="h-4 w-4" />
-                                                        {entry.helpful_votes || 0}
-                                                    </span>
+                                                {/* Stats and chevron */}
+                                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 pt-2 sm:pt-0 border-t sm:border-0">
+                                                    <div className="flex items-center gap-3 sm:gap-4">
+                                                        <span className="flex items-center gap-1">
+                                                            <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                                            {entry.usage_count || 0}
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <ThumbsUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                                                            {entry.helpful_votes || 0}
+                                                        </span>
+                                                    </div>
                                                     {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {isExpanded && (
-                                            <div className="px-6 pb-6 border-t">
-                                                <div className="mt-4 prose max-w-none">
-                                                    <div className="bg-gray-50 p-4 rounded-lg whitespace-pre-wrap">
+                                            <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t">
+                                                <div className="mt-3 sm:mt-4 prose max-w-none">
+                                                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg whitespace-pre-wrap text-sm sm:text-base">
                                                         {entry.answer || entry.content}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                                                    <div className="text-sm text-gray-500">
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+                                                    <div className="text-xs sm:text-sm text-gray-500">
                                                         {entry.created_by && `Por ${entry.created_by} · `}
                                                         {new Date(entry.created_at).toLocaleDateString('pt-BR')}
                                                     </div>
@@ -491,7 +494,7 @@ export default function KnowledgePage() {
                                                             e.stopPropagation();
                                                             handleVote(entry.id);
                                                         }}
-                                                        className="flex items-center gap-2 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg"
+                                                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg w-full sm:w-auto"
                                                     >
                                                         <ThumbsUp className="h-4 w-4" />
                                                         Foi útil

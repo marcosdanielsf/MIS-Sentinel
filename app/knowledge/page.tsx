@@ -58,6 +58,12 @@ const categoryLabels: Record<string, string> = {
     best_practice: 'Boa Prática',
 };
 
+// Helper function to convert literal \n to actual line breaks
+const formatText = (text: string | null | undefined): string => {
+    if (!text) return '';
+    return text.replace(/\\n/g, '\n');
+};
+
 export default function KnowledgePage() {
     const { user, loading } = useAuth();
     const router = useRouter();
@@ -454,7 +460,7 @@ export default function KnowledgePage() {
 
                                                     {!isExpanded && (
                                                         <p className="text-gray-600 mt-1.5 sm:mt-2 line-clamp-2 text-xs sm:text-sm">
-                                                            {entry.answer || entry.content}
+                                                            {formatText(entry.answer || entry.content)}
                                                         </p>
                                                     )}
                                                 </div>
@@ -480,7 +486,7 @@ export default function KnowledgePage() {
                                             <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t">
                                                 <div className="mt-3 sm:mt-4 prose max-w-none">
                                                     <div className="bg-gray-50 p-3 sm:p-4 rounded-lg whitespace-pre-wrap text-sm sm:text-base text-gray-800">
-                                                        {entry.answer || entry.content}
+                                                        {formatText(entry.answer || entry.content)}
                                                     </div>
                                                 </div>
 

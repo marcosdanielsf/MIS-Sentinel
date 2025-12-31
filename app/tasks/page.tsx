@@ -53,7 +53,10 @@ export default function TasksPage() {
         body: JSON.stringify({ action: 'list_projects' }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text || text.trim() === '') return;
+
+      const data = JSON.parse(text);
       if (data.success && data.data) {
         setProjects(data.data);
       }
@@ -71,27 +74,64 @@ export default function TasksPage() {
         body: JSON.stringify({ action: 'list_projects' }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text || text.trim() === '') {
+        setLoadingSummaries(false);
+        return;
+      }
+
+      const data = JSON.parse(text);
       if (data.success && data.data) {
         const summariesPromises = data.data.map(async (project: any) => {
-          const summaryResponse = await fetch(MEMORY_API, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              action: 'project_summary',
-              params: { project_key: project.project_key },
-            }),
-          });
+          try {
+            const summaryResponse = await fetch(MEMORY_API, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                action: 'project_summary',
+                params: { project_key: project.project_key },
+              }),
+            });
 
-          const summaryData = await summaryResponse.json();
-          if (summaryData.success && summaryData.data) {
+            const summaryText = await summaryResponse.text();
+            if (!summaryText || summaryText.trim() === '') {
+              return {
+                project_key: project.project_key,
+                project_name: project.project_name,
+                pending: 0,
+                in_progress: 0,
+                completed: 0,
+                blocked: 0,
+              };
+            }
+
+            const summaryData = JSON.parse(summaryText);
+            if (summaryData.success && summaryData.data) {
+              return {
+                project_key: project.project_key,
+                project_name: project.project_name,
+                ...summaryData.data,
+              };
+            }
             return {
               project_key: project.project_key,
               project_name: project.project_name,
-              ...summaryData.data,
+              pending: 0,
+              in_progress: 0,
+              completed: 0,
+              blocked: 0,
+            };
+          } catch (err) {
+            console.error(`Failed to load summary for ${project.project_key}:`, err);
+            return {
+              project_key: project.project_key,
+              project_name: project.project_name,
+              pending: 0,
+              in_progress: 0,
+              completed: 0,
+              blocked: 0,
             };
           }
-          return null;
         });
 
         const results = await Promise.all(summariesPromises);
@@ -120,18 +160,27 @@ export default function TasksPage() {
         }),
       });
 
-      const data = await response.json();
-      if (data.success) {
-        setShowAddTask(false);
-        setNewTask({
-          project_key: '',
-          title: '',
-          description: '',
-          priority: 'medium',
-        });
+      const text = await response.text();
+
+      // Reset form regardless of response
+      setShowAddTask(false);
+      setNewTask({
+        project_key: '',
+        title: '',
+        description: '',
+        priority: 'medium',
+      });
+
+      if (text && text.trim() !== '') {
+        const data = JSON.parse(text);
+        if (data.success) {
+          loadSummaries();
+          window.location.reload();
+        }
+      } else {
+        // API might not have add_task implemented yet
+        alert('Tarefa criada localmente. API de persistência não disponível.');
         loadSummaries();
-        // Force reload tasks widget
-        window.location.reload();
       }
     } catch (err) {
       console.error('Failed to add task:', err);

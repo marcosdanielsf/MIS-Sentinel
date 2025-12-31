@@ -48,7 +48,10 @@ export default function TasksWidget({ projectKey, limit = 10, showFilters = fals
         body: JSON.stringify({ action: 'list_projects' }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text || text.trim() === '') return;
+
+      const data = JSON.parse(text);
       if (data.success && data.data) {
         setProjects(data.data);
       }
@@ -76,7 +79,15 @@ export default function TasksWidget({ projectKey, limit = 10, showFilters = fals
         }),
       });
 
-      const data = await response.json();
+      // Check if response has content
+      const text = await response.text();
+      if (!text || text.trim() === '') {
+        setTasks([]);
+        setLoading(false);
+        return;
+      }
+
+      const data = JSON.parse(text);
 
       if (data.success && data.data) {
         let filteredTasks = data.data;
@@ -115,9 +126,14 @@ export default function TasksWidget({ projectKey, limit = 10, showFilters = fals
         }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text || text.trim() === '') {
+        loadTasks();
+        return;
+      }
+
+      const data = JSON.parse(text);
       if (data.success) {
-        // Reload tasks
         loadTasks();
       }
     } catch (err) {
@@ -136,7 +152,13 @@ export default function TasksWidget({ projectKey, limit = 10, showFilters = fals
         }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text || text.trim() === '') {
+        loadTasks();
+        return;
+      }
+
+      const data = JSON.parse(text);
       if (data.success) {
         loadTasks();
       }

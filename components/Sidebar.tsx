@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Users, Settings, LogOut, AlertTriangle, MessageSquare, Activity, Timer, BookOpen, GitBranch, TrendingUp, Heart, Target, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Settings, LogOut, AlertTriangle, MessageSquare, Activity, Timer, BookOpen, GitBranch, TrendingUp, Heart, Target, Menu, X, ListTodo } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
 const menuItems = [
@@ -16,6 +16,11 @@ const menuItems = [
         name: 'CRT - Resolution Time',
         href: '/crt',
         icon: Timer,
+    },
+    {
+        name: 'Tarefas',
+        href: '/tasks',
+        icon: ListTodo,
     },
     {
         name: 'Issues',

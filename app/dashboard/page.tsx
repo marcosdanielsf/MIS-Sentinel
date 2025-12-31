@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import Sidebar from '@/components/Sidebar';
 import StatsCard from '@/components/StatsCard';
 import DateFilter, { DateRange } from '@/components/DateFilter';
+import TasksWidget from '@/components/TasksWidget';
 import { AlertTriangle, MessageSquare, Activity, Zap, CheckCircle } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 
@@ -340,6 +341,11 @@ export default function DashboardPage() {
                                     <p className="text-4xl font-bold">24/7</p>
                                     <p className="text-sm mt-2 opacity-90">Sistema sempre ativo</p>
                                 </div>
+                            </div>
+
+                            {/* Tasks Widget */}
+                            <div className="mb-8">
+                                <TasksWidget limit={5} showFilters={false} />
                             </div>
 
                             {/* Recent Issues */}

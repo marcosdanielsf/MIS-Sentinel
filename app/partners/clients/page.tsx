@@ -161,10 +161,10 @@ export default function PartnersClientsPage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-400">Carregando...</p>
                 </div>
             </div>
         );
@@ -178,51 +178,51 @@ export default function PartnersClientsPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-[#0a0a0f]">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">Meus Clientes</h1>
-                        <p className="mt-2 text-gray-600">
+                        <h1 className="text-3xl font-bold text-white">Meus Clientes</h1>
+                        <p className="mt-2 text-gray-400">
                             Gerencie e acompanhe todos os seus clientes
                         </p>
                     </div>
 
                     {/* Stats Summary */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white p-4 rounded-lg shadow">
-                            <p className="text-sm text-gray-600">Total de Clientes</p>
-                            <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+                        <div className="bg-[#12121a] border border-gray-800 p-4 rounded-xl">
+                            <p className="text-sm text-gray-400">Total de Clientes</p>
+                            <p className="text-2xl font-bold text-white">{stats.total}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-lg shadow">
-                            <p className="text-sm text-gray-600">Ativos</p>
-                            <p className="text-2xl font-bold text-green-600">{stats.active}</p>
+                        <div className="bg-[#12121a] border border-gray-800 p-4 rounded-xl">
+                            <p className="text-sm text-gray-400">Ativos</p>
+                            <p className="text-2xl font-bold text-emerald-400">{stats.active}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-lg shadow">
-                            <p className="text-sm text-gray-600">Pendentes</p>
-                            <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
+                        <div className="bg-[#12121a] border border-gray-800 p-4 rounded-xl">
+                            <p className="text-sm text-gray-400">Pendentes</p>
+                            <p className="text-2xl font-bold text-yellow-400">{stats.pending}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-lg shadow">
-                            <p className="text-sm text-gray-600">Inativos</p>
-                            <p className="text-2xl font-bold text-red-600">{stats.inactive}</p>
+                        <div className="bg-[#12121a] border border-gray-800 p-4 rounded-xl">
+                            <p className="text-sm text-gray-400">Inativos</p>
+                            <p className="text-2xl font-bold text-red-400">{stats.inactive}</p>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="bg-white p-6 rounded-lg shadow mb-6">
+                    <div className="bg-[#12121a] border border-gray-800 p-6 rounded-xl mb-6">
                         <div className="flex flex-col md:flex-row gap-4">
                             {/* Search */}
                             <div className="flex-1">
                                 <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
                                     <input
                                         type="text"
                                         placeholder="Buscar por nome ou plano..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                                        className="w-full pl-10 pr-4 py-2 bg-[#0a0a0f] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                     />
                                 </div>
                             </div>
@@ -230,11 +230,11 @@ export default function PartnersClientsPage() {
                             {/* Status Filter */}
                             <div className="md:w-64">
                                 <div className="relative">
-                                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                    <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
                                     <select
                                         value={statusFilter}
                                         onChange={(e) => setStatusFilter(e.target.value as FilterStatus)}
-                                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none bg-white"
+                                        className="w-full pl-10 pr-4 py-2 bg-[#0a0a0f] border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent appearance-none"
                                     >
                                         <option value="all">Todos os Status</option>
                                         <option value="active">Ativos</option>
@@ -246,7 +246,7 @@ export default function PartnersClientsPage() {
                         </div>
 
                         {/* Results count */}
-                        <div className="mt-4 text-sm text-gray-600">
+                        <div className="mt-4 text-sm text-gray-500">
                             Mostrando {filteredClients.length} de {clients.length} clientes
                         </div>
                     </div>
@@ -255,12 +255,12 @@ export default function PartnersClientsPage() {
                     {loadingData ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando clientes...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto"></div>
+                                <p className="mt-4 text-gray-400">Carregando clientes...</p>
                             </div>
                         </div>
                     ) : (
-                        <div className="bg-white rounded-lg shadow p-6">
+                        <div className="bg-[#12121a] border border-gray-800 rounded-xl p-6">
                             <ClientList clients={filteredClients} showAll={true} />
                         </div>
                     )}

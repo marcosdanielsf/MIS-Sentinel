@@ -139,10 +139,10 @@ export default function PartnersEarningsPage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-400">Carregando...</p>
                 </div>
             </div>
         );
@@ -170,20 +170,20 @@ export default function PartnersEarningsPage() {
     const totalPending = pendingTransactions.reduce((sum, t) => sum + t.amount, 0);
 
     const statusConfig = {
-        paid: { label: 'Pago', color: 'bg-green-100 text-green-800' },
-        pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800' },
-        processing: { label: 'Processando', color: 'bg-blue-100 text-blue-800' },
+        paid: { label: 'Pago', color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' },
+        pending: { label: 'Pendente', color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' },
+        processing: { label: 'Processando', color: 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' },
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-[#0a0a0f]">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">Minhas Comissões</h1>
-                        <p className="mt-2 text-gray-600">
+                        <h1 className="text-3xl font-bold text-white">Minhas Comissões</h1>
+                        <p className="mt-2 text-gray-400">
                             Acompanhe seus ganhos e histórico de pagamentos
                         </p>
                     </div>
@@ -191,57 +191,57 @@ export default function PartnersEarningsPage() {
                     {loadingData ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando dados...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto"></div>
+                                <p className="mt-4 text-gray-400">Carregando dados...</p>
                             </div>
                         </div>
                     ) : (
                         <>
                             {/* Stats Cards */}
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-lg shadow text-white">
+                                <div className="bg-gradient-to-br from-purple-600/20 to-purple-900/20 border border-purple-500/30 p-6 rounded-xl">
                                     <div className="flex items-center justify-between mb-2">
-                                        <p className="text-sm opacity-90">Total Acumulado</p>
-                                        <DollarSign className="h-6 w-6 opacity-80" />
+                                        <p className="text-sm text-gray-400">Total Acumulado</p>
+                                        <DollarSign className="h-6 w-6 text-purple-400" />
                                     </div>
-                                    <p className="text-3xl font-bold">{formatCurrency(totalEarnings)}</p>
-                                    <p className="text-xs mt-2 opacity-75">Últimos 12 meses</p>
+                                    <p className="text-3xl font-bold text-white">{formatCurrency(totalEarnings)}</p>
+                                    <p className="text-xs mt-2 text-gray-500">Últimos 12 meses</p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg shadow text-white">
+                                <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-900/20 border border-emerald-500/30 p-6 rounded-xl">
                                     <div className="flex items-center justify-between mb-2">
-                                        <p className="text-sm opacity-90">Mês Atual</p>
-                                        <Calendar className="h-6 w-6 opacity-80" />
+                                        <p className="text-sm text-gray-400">Mês Atual</p>
+                                        <Calendar className="h-6 w-6 text-emerald-400" />
                                     </div>
-                                    <p className="text-3xl font-bold">{formatCurrency(currentMonth)}</p>
-                                    <p className={`text-xs mt-2 ${growth >= 0 ? 'opacity-90' : 'opacity-75'}`}>
+                                    <p className="text-3xl font-bold text-white">{formatCurrency(currentMonth)}</p>
+                                    <p className={`text-xs mt-2 ${growth >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                                         {growth >= 0 ? '↑' : '↓'} {Math.abs(growth).toFixed(1)}% vs mês anterior
                                     </p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg shadow text-white">
+                                <div className="bg-gradient-to-br from-cyan-600/20 to-cyan-900/20 border border-cyan-500/30 p-6 rounded-xl">
                                     <div className="flex items-center justify-between mb-2">
-                                        <p className="text-sm opacity-90">Pagamentos Recebidos</p>
-                                        <TrendingUp className="h-6 w-6 opacity-80" />
+                                        <p className="text-sm text-gray-400">Pagamentos Recebidos</p>
+                                        <TrendingUp className="h-6 w-6 text-cyan-400" />
                                     </div>
-                                    <p className="text-3xl font-bold">{formatCurrency(totalPaid)}</p>
-                                    <p className="text-xs mt-2 opacity-75">{paidTransactions.length} transações</p>
+                                    <p className="text-3xl font-bold text-white">{formatCurrency(totalPaid)}</p>
+                                    <p className="text-xs mt-2 text-gray-500">{paidTransactions.length} transações</p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 p-6 rounded-lg shadow text-white">
+                                <div className="bg-gradient-to-br from-yellow-600/20 to-yellow-900/20 border border-yellow-500/30 p-6 rounded-xl">
                                     <div className="flex items-center justify-between mb-2">
-                                        <p className="text-sm opacity-90">A Receber</p>
-                                        <Calendar className="h-6 w-6 opacity-80" />
+                                        <p className="text-sm text-gray-400">A Receber</p>
+                                        <Calendar className="h-6 w-6 text-yellow-400" />
                                     </div>
-                                    <p className="text-3xl font-bold">{formatCurrency(totalPending)}</p>
-                                    <p className="text-xs mt-2 opacity-75">{pendingTransactions.length} pendentes</p>
+                                    <p className="text-3xl font-bold text-white">{formatCurrency(totalPending)}</p>
+                                    <p className="text-xs mt-2 text-gray-500">{pendingTransactions.length} pendentes</p>
                                 </div>
                             </div>
 
                             {/* Chart */}
-                            <div className="bg-white p-6 rounded-lg shadow mb-8">
+                            <div className="bg-[#12121a] border border-gray-800 p-6 rounded-xl mb-8">
                                 <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-lg font-semibold text-gray-900">
+                                    <h3 className="text-lg font-semibold text-white">
                                         Evolução de Comissões
                                     </h3>
                                     <div className="flex gap-2">
@@ -249,8 +249,8 @@ export default function PartnersEarningsPage() {
                                             onClick={() => setChartType('bar')}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                                 chartType === 'bar'
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    ? 'bg-cyan-500 text-white'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                             }`}
                                         >
                                             Barras
@@ -259,8 +259,8 @@ export default function PartnersEarningsPage() {
                                             onClick={() => setChartType('line')}
                                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                                                 chartType === 'line'
-                                                    ? 'bg-indigo-600 text-white'
-                                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                                    ? 'bg-cyan-500 text-white'
+                                                    : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
                                             }`}
                                         >
                                             Linha
@@ -271,13 +271,13 @@ export default function PartnersEarningsPage() {
                             </div>
 
                             {/* Transactions Table */}
-                            <div className="bg-white rounded-lg shadow">
+                            <div className="bg-[#12121a] border border-gray-800 rounded-xl">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-6">
-                                        <h3 className="text-lg font-semibold text-gray-900">
+                                        <h3 className="text-lg font-semibold text-white">
                                             Histórico de Transações
                                         </h3>
-                                        <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+                                        <button className="flex items-center gap-2 px-4 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600 transition-colors">
                                             <Download className="h-4 w-4" />
                                             Exportar
                                         </button>
@@ -285,35 +285,35 @@ export default function PartnersEarningsPage() {
 
                                     <div className="overflow-x-auto">
                                         <table className="w-full">
-                                            <thead className="bg-gray-50">
+                                            <thead className="bg-[#0a0a0f]">
                                                 <tr>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                                         Data
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                                         Cliente
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                                         Valor
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                                         Status
                                                     </th>
-                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
                                                         Nota Fiscal
                                                     </th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
+                                            <tbody className="divide-y divide-gray-800">
                                                 {transactions.map((transaction) => (
-                                                    <tr key={transaction.id} className="hover:bg-gray-50">
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                    <tr key={transaction.id} className="hover:bg-gray-800/50 transition-colors">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                                                             {formatDate(transaction.date)}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-white">
                                                             {transaction.client}
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-white">
                                                             {formatCurrency(transaction.amount)}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">

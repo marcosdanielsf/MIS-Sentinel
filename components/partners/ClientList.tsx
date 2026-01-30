@@ -18,9 +18,21 @@ interface ClientListProps {
 }
 
 const statusConfig = {
-    active: { label: 'Ativo', color: 'bg-green-100 text-green-800', icon: CheckCircle },
-    inactive: { label: 'Inativo', color: 'bg-red-100 text-red-800', icon: AlertCircle },
-    pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-800', icon: AlertCircle },
+    active: { 
+        label: 'Ativo', 
+        color: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30', 
+        icon: CheckCircle 
+    },
+    inactive: { 
+        label: 'Inativo', 
+        color: 'bg-red-500/20 text-red-400 border border-red-500/30', 
+        icon: AlertCircle 
+    },
+    pending: { 
+        label: 'Pendente', 
+        color: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', 
+        icon: AlertCircle 
+    },
 };
 
 export default function ClientList({ clients, showAll = false }: ClientListProps) {
@@ -40,9 +52,9 @@ export default function ClientList({ clients, showAll = false }: ClientListProps
     if (clients.length === 0) {
         return (
             <div className="text-center py-12 text-gray-500">
-                <Building2 className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                <p>Nenhum cliente encontrado</p>
-                <p className="text-sm mt-1">Seus clientes aparecerão aqui</p>
+                <Building2 className="h-12 w-12 mx-auto mb-2 text-gray-600" />
+                <p className="text-gray-400">Nenhum cliente encontrado</p>
+                <p className="text-sm mt-1 text-gray-500">Seus clientes aparecerão aqui</p>
             </div>
         );
     }
@@ -56,33 +68,33 @@ export default function ClientList({ clients, showAll = false }: ClientListProps
                 return (
                     <div
                         key={client.id}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className="bg-[#0a0a0f] border border-gray-800 rounded-lg p-4 hover:border-gray-700 transition-colors"
                     >
                         <div className="flex items-start justify-between">
                             <div className="flex items-start gap-3 flex-1">
-                                <div className="p-2 bg-indigo-100 rounded-lg">
-                                    <Building2 className="h-6 w-6 text-indigo-600" />
+                                <div className="p-2 bg-cyan-500/20 border border-cyan-500/30 rounded-lg">
+                                    <Building2 className="h-6 w-6 text-cyan-400" />
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
-                                        <h3 className="font-semibold text-gray-900">{client.name}</h3>
+                                        <h3 className="font-semibold text-white">{client.name}</h3>
                                         <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${statusConfig[client.status].color}`}>
                                             {statusConfig[client.status].label}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-gray-600 mb-2">{client.plan}</p>
+                                    <p className="text-sm text-gray-500 mb-2">{client.plan}</p>
                                     <div className="flex items-center gap-4 text-sm">
                                         <div>
                                             <span className="text-gray-500">Valor mensal: </span>
-                                            <span className="font-semibold text-gray-900">{formatCurrency(client.monthlyValue)}</span>
+                                            <span className="font-semibold text-white">{formatCurrency(client.monthlyValue)}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-500">Sua comissão: </span>
-                                            <span className="font-semibold text-green-600">{formatCurrency(monthlyCommission)}</span>
+                                            <span className="font-semibold text-emerald-400">{formatCurrency(monthlyCommission)}</span>
                                         </div>
                                     </div>
                                     {client.lastActivity && (
-                                        <p className="text-xs text-gray-400 mt-2">
+                                        <p className="text-xs text-gray-600 mt-2">
                                             Última atividade: {formatDate(client.lastActivity)}
                                         </p>
                                     )}
@@ -90,8 +102,8 @@ export default function ClientList({ clients, showAll = false }: ClientListProps
                             </div>
                             <div className="text-right">
                                 <div className="text-xs text-gray-500 mb-1">Taxa de comissão</div>
-                                <div className="text-lg font-bold text-indigo-600">{client.commissionRate}%</div>
-                                <div className="text-xs text-gray-400 mt-1">Início: {formatDate(client.startDate)}</div>
+                                <div className="text-lg font-bold text-cyan-400">{client.commissionRate}%</div>
+                                <div className="text-xs text-gray-600 mt-1">Início: {formatDate(client.startDate)}</div>
                             </div>
                         </div>
                     </div>
@@ -101,7 +113,7 @@ export default function ClientList({ clients, showAll = false }: ClientListProps
             {!showAll && clients.length > 5 && (
                 <Link
                     href="/partners/clients"
-                    className="block text-center py-3 text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                    className="block text-center py-3 text-sm text-cyan-400 hover:text-cyan-300 font-medium"
                 >
                     Ver todos os {clients.length} clientes →
                 </Link>

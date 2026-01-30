@@ -125,10 +125,10 @@ export default function PartnersPage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-[#0a0a0f]">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-400">Carregando...</p>
                 </div>
             </div>
         );
@@ -148,7 +148,7 @@ export default function PartnersPage() {
             title: 'Clientes Ativos',
             value: activeClients,
             icon: Users,
-            color: 'blue' as const,
+            color: 'cyan' as const,
             trend: { value: 25, isPositive: true },
         },
         {
@@ -170,7 +170,7 @@ export default function PartnersPage() {
                 minimumFractionDigits: 0,
             }).format(totalMonthlyCommission),
             icon: DollarSign,
-            color: 'indigo' as const,
+            color: 'purple' as const,
             trend: { value: 20, isPositive: true },
         },
         {
@@ -181,19 +181,19 @@ export default function PartnersPage() {
                 minimumFractionDigits: 0,
             }).format(totalLifetimeEarnings),
             icon: Award,
-            color: 'purple' as const,
+            color: 'orange' as const,
         },
     ];
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-[#0a0a0f]">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900">Portal de Parceiros</h1>
-                        <p className="mt-2 text-gray-600">
+                        <h1 className="text-3xl font-bold text-white">Portal de Parceiros</h1>
+                        <p className="mt-2 text-gray-400">
                             Acompanhe seus clientes, comissões e performance
                         </p>
                     </div>
@@ -201,8 +201,8 @@ export default function PartnersPage() {
                     {loadingData ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando dados...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-cyan-500 mx-auto"></div>
+                                <p className="mt-4 text-gray-400">Carregando dados...</p>
                             </div>
                         </div>
                     ) : (
@@ -210,14 +210,14 @@ export default function PartnersPage() {
                             <PartnerStats stats={stats} />
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                                <div className="bg-white p-6 rounded-lg shadow">
+                                <div className="bg-[#12121a] border border-gray-800 p-6 rounded-xl">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">
+                                        <h3 className="text-lg font-semibold text-white">
                                             Evolução de Comissões
                                         </h3>
                                         <Link
                                             href="/partners/earnings"
-                                            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                            className="text-sm text-cyan-400 hover:text-cyan-300 font-medium"
                                         >
                                             Ver detalhes →
                                         </Link>
@@ -225,21 +225,21 @@ export default function PartnersPage() {
                                     <EarningsChart data={earningsData} type="bar" />
                                 </div>
 
-                                <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                <div className="bg-[#12121a] border border-gray-800 p-6 rounded-xl">
+                                    <h3 className="text-lg font-semibold text-white mb-4">
                                         Distribuição por Status
                                     </h3>
                                     <div className="space-y-4">
-                                        <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                                        <div className="flex items-center justify-between p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
                                             <div>
-                                                <p className="text-sm text-gray-600">Ativos</p>
-                                                <p className="text-2xl font-bold text-green-600">
+                                                <p className="text-sm text-gray-400">Ativos</p>
+                                                <p className="text-2xl font-bold text-emerald-400">
                                                     {clients.filter(c => c.status === 'active').length}
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-sm text-gray-600">MRR</p>
-                                                <p className="text-lg font-semibold text-gray-900">
+                                                <p className="text-sm text-gray-400">MRR</p>
+                                                <p className="text-lg font-semibold text-white">
                                                     {new Intl.NumberFormat('pt-BR', {
                                                         style: 'currency',
                                                         currency: 'BRL',
@@ -249,10 +249,10 @@ export default function PartnersPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between p-4 bg-yellow-50 rounded-lg">
+                                        <div className="flex items-center justify-between p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                                             <div>
-                                                <p className="text-sm text-gray-600">Pendentes</p>
-                                                <p className="text-2xl font-bold text-yellow-600">
+                                                <p className="text-sm text-gray-400">Pendentes</p>
+                                                <p className="text-2xl font-bold text-yellow-400">
                                                     {clients.filter(c => c.status === 'pending').length}
                                                 </p>
                                             </div>
@@ -261,10 +261,10 @@ export default function PartnersPage() {
                                             </div>
                                         </div>
 
-                                        <div className="flex items-center justify-between p-4 bg-red-50 rounded-lg">
+                                        <div className="flex items-center justify-between p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
                                             <div>
-                                                <p className="text-sm text-gray-600">Inativos</p>
-                                                <p className="text-2xl font-bold text-red-600">
+                                                <p className="text-sm text-gray-400">Inativos</p>
+                                                <p className="text-2xl font-bold text-red-400">
                                                     {clients.filter(c => c.status === 'inactive').length}
                                                 </p>
                                             </div>
@@ -276,15 +276,15 @@ export default function PartnersPage() {
                                 </div>
                             </div>
 
-                            <div className="bg-white rounded-lg shadow mt-8">
+                            <div className="bg-[#12121a] border border-gray-800 rounded-xl mt-8">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">
+                                        <h3 className="text-lg font-semibold text-white">
                                             Seus Clientes
                                         </h3>
                                         <Link
                                             href="/partners/clients"
-                                            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                            className="text-sm text-cyan-400 hover:text-cyan-300 font-medium"
                                         >
                                             Ver todos →
                                         </Link>

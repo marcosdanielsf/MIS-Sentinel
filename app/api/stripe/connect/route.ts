@@ -109,7 +109,6 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error('Error saving partner account to database:', dbError);
-      // Rollback: delete Stripe account
       await deleteConnectAccount(stripeAccount.id);
       return NextResponse.json(
         { error: 'Failed to save partner account' },
@@ -136,13 +135,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error creating Stripe Connect account:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error.message || 'Failed to create Stripe Connect account',
-          type: error.type || 'internal_error'
-        }
-      },
+      { error: error.message || 'Failed to create Stripe Connect account' },
       { status: 500 }
     );
   }
@@ -150,114 +143,12 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/stripe/connect?partner_id=xxx
- * Get partner's Stripe Connect account status
+ * Get partner's Stripe account info
  */
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams } = new URL(request.url);
     const partner_id = searchParams.get('partner_id');
-    const stripe_account_id = searchParams.get('stripe_account_id');
-
-    if (!partner_id && !stripe_account_id) {
-      return NextResponse.json(
-        { error: 'partner_id or stripe_account_id is required' },
-        { status: 400 }
-      );
-    }
-
-    // Get from database
-    let query = supabase.from('partner_stripe_accounts').select('*');
-
-    if (partner_id) {
-      query = query.eq('partner_id', partner_id);
-    } else if (stripe_account_id) {
-      query = query.eq('stripe_account_id', stripe_account_id);
-    }
-
-    const { data: dbAccount, error: dbError } = await query.single();
-
-    if (dbError || !dbAccount) {
-      return NextResponse.json(
-        { error: 'Partner account not found' },
-        { status: 404 }
-      );
-    }
-
-    // Get latest status from Stripe
-    const stripeAccount = await getConnectAccount(dbAccount.stripe_account_id);
-    const currentStatus = mapStripeAccountStatus(stripeAccount);
-
-    // Update database if status changed
-    if (currentStatus !== dbAccount.stripe_account_status) {
-      const { data: updatedAccount } = await supabase
-        .from('partner_stripe_accounts')
-        .update({
-          stripe_account_status: currentStatus,
-          details_submitted: stripeAccount.details_submitted || false,
-          charges_enabled: stripeAccount.charges_enabled || false,
-          payouts_enabled: stripeAccount.payouts_enabled || false,
-          onboarding_completed: stripeAccount.charges_enabled && stripeAccount.payouts_enabled,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', dbAccount.id)
-        .select()
-        .single();
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          account: updatedAccount,
-          stripe_details: {
-            charges_enabled: stripeAccount.charges_enabled,
-            payouts_enabled: stripeAccount.payouts_enabled,
-            details_submitted: stripeAccount.details_submitted,
-            requirements: stripeAccount.requirements
-          }
-        }
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        account: dbAccount,
-        stripe_details: {
-          charges_enabled: stripeAccount.charges_enabled,
-          payouts_enabled: stripeAccount.payouts_enabled,
-          details_submitted: stripeAccount.details_submitted,
-          requirements: stripeAccount.requirements
-        }
-      }
-    });
-  } catch (error: any) {
-    console.error('Error fetching Stripe Connect account:', error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error.message || 'Failed to fetch account',
-          type: error.type || 'internal_error'
-        }
-      },
-      { status: 500 }
-    );
-  }
-}
-
-/**
- * PUT /api/stripe/connect
- * Update partner tier or generate new onboarding link
- */
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const {
-      partner_id,
-      tier,
-      refresh_url,
-      return_url,
-      action = 'update_tier' // 'update_tier' or 'refresh_onboarding'
-    } = body;
 
     if (!partner_id) {
       return NextResponse.json(
@@ -266,7 +157,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Get partner account
+    // Get from database
     const { data: dbAccount, error: dbError } = await supabase
       .from('partner_stripe_accounts')
       .select('*')
@@ -275,82 +166,46 @@ export async function PUT(request: NextRequest) {
 
     if (dbError || !dbAccount) {
       return NextResponse.json(
-        { error: 'Partner account not found' },
+        { error: 'Partner Stripe account not found' },
         { status: 404 }
       );
     }
 
-    if (action === 'update_tier') {
-      // Update tier and commission rate
-      if (!tier || !Object.values(PartnerTier).includes(tier)) {
-        return NextResponse.json(
-          { error: 'Valid tier is required' },
-          { status: 400 }
-        );
-      }
+    // Get fresh data from Stripe
+    const stripeAccount = await getConnectAccount(dbAccount.stripe_account_id);
 
-      const new_commission_rate = COMMISSION_RATES[tier as PartnerTier];
+    // Update database with fresh data
+    const updates = {
+      stripe_account_status: mapStripeAccountStatus(stripeAccount),
+      details_submitted: stripeAccount.details_submitted || false,
+      charges_enabled: stripeAccount.charges_enabled || false,
+      payouts_enabled: stripeAccount.payouts_enabled || false,
+      onboarding_completed: stripeAccount.details_submitted && stripeAccount.charges_enabled
+    };
 
-      const { data: updatedAccount } = await supabase
-        .from('partner_stripe_accounts')
-        .update({
-          tier,
-          commission_rate: new_commission_rate,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', dbAccount.id)
-        .select()
-        .single();
+    await supabase
+      .from('partner_stripe_accounts')
+      .update(updates)
+      .eq('id', dbAccount.id);
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          account: updatedAccount,
-          message: `Partner tier updated to ${tier} with ${new_commission_rate * 100}% commission`
+    return NextResponse.json({
+      success: true,
+      data: {
+        ...dbAccount,
+        ...updates,
+        stripe_details: {
+          type: stripeAccount.type,
+          country: stripeAccount.country,
+          default_currency: stripeAccount.default_currency,
+          capabilities: stripeAccount.capabilities,
+          requirements: stripeAccount.requirements
         }
-      });
-    }
-
-    if (action === 'refresh_onboarding') {
-      // Generate new onboarding link
-      if (!refresh_url || !return_url) {
-        return NextResponse.json(
-          { error: 'refresh_url and return_url are required' },
-          { status: 400 }
-        );
       }
-
-      const accountLink = await createAccountLink({
-        account_id: dbAccount.stripe_account_id,
-        refresh_url,
-        return_url,
-        type: dbAccount.onboarding_completed ? 'account_update' : 'account_onboarding'
-      });
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          onboarding_url: accountLink.url,
-          expires_at: accountLink.expires_at,
-          type: dbAccount.onboarding_completed ? 'account_update' : 'account_onboarding'
-        }
-      });
-    }
-
-    return NextResponse.json(
-      { error: 'Invalid action. Use "update_tier" or "refresh_onboarding"' },
-      { status: 400 }
-    );
+    });
   } catch (error: any) {
-    console.error('Error updating Stripe Connect account:', error);
+    console.error('Error getting Stripe account:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error.message || 'Failed to update account',
-          type: error.type || 'internal_error'
-        }
-      },
+      { error: error.message || 'Failed to get Stripe account' },
       { status: 500 }
     );
   }
@@ -358,11 +213,11 @@ export async function PUT(request: NextRequest) {
 
 /**
  * DELETE /api/stripe/connect?partner_id=xxx
- * Delete/deactivate a partner's Stripe Connect account
+ * Delete partner's Stripe account
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
+    const { searchParams } = new URL(request.url);
     const partner_id = searchParams.get('partner_id');
 
     if (!partner_id) {
@@ -372,7 +227,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Get partner account
+    // Get from database
     const { data: dbAccount, error: dbError } = await supabase
       .from('partner_stripe_accounts')
       .select('*')
@@ -381,7 +236,7 @@ export async function DELETE(request: NextRequest) {
 
     if (dbError || !dbAccount) {
       return NextResponse.json(
-        { error: 'Partner account not found' },
+        { error: 'Partner Stripe account not found' },
         { status: 404 }
       );
     }
@@ -389,29 +244,20 @@ export async function DELETE(request: NextRequest) {
     // Delete from Stripe
     await deleteConnectAccount(dbAccount.stripe_account_id);
 
-    // Update database (soft delete - mark as inactive)
+    // Delete from database
     await supabase
       .from('partner_stripe_accounts')
-      .update({
-        stripe_account_status: StripeAccountStatus.INACTIVE,
-        updated_at: new Date().toISOString()
-      })
+      .delete()
       .eq('id', dbAccount.id);
 
     return NextResponse.json({
       success: true,
-      message: 'Partner Stripe account deleted successfully'
+      message: 'Stripe account deleted successfully'
     });
   } catch (error: any) {
-    console.error('Error deleting Stripe Connect account:', error);
+    console.error('Error deleting Stripe account:', error);
     return NextResponse.json(
-      {
-        success: false,
-        error: {
-          message: error.message || 'Failed to delete account',
-          type: error.type || 'internal_error'
-        }
-      },
+      { error: error.message || 'Failed to delete Stripe account' },
       { status: 500 }
     );
   }

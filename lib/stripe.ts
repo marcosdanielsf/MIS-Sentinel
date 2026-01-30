@@ -11,24 +11,33 @@ import {
   PartnerStripeAccount
 } from '@/types/stripe';
 
-// Initialize Stripe with API key
-if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+// Lazy initialization of Stripe client
+let _stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+  if (!_stripe) {
+    const key = process.env.STRIPE_SECRET_KEY;
+    if (!key) {
+      throw new Error('STRIPE_SECRET_KEY is not defined in environment variables');
+    }
+    _stripe = new Stripe(key, {
+      apiVersion: '2024-12-18.acacia' as any,
+      typescript: true,
+      appInfo: {
+        name: 'MIS Sentinel - BPOSS White Label',
+        version: '1.0.0',
+        url: 'https://mis-sentinel.mottivme.com'
+      }
+    });
+  }
+  return _stripe;
 }
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-12-18.acacia' as any,
-  typescript: true,
-  appInfo: {
-    name: 'MIS Sentinel - BPOSS White Label',
-    version: '1.0.0',
-    url: 'https://mis-sentinel.mottivme.com'
-  }
-});
+// Export stripe getter for direct access when needed
+export const stripe = { get: getStripe };
 
 /**
  * Stripe Connect Account Type
- * Using 'express' for easier onboarding and management
  */
 const CONNECT_ACCOUNT_TYPE = 'express' as const;
 
@@ -37,12 +46,8 @@ const CONNECT_ACCOUNT_TYPE = 'express' as const;
  */
 export function calculateSplit(params: CalculateSplitParams): SplitCalculation {
   const { amount, commission_rate } = params;
-
-  // Calculate amounts
   const commission_amount = Math.round(amount * commission_rate);
   const platform_amount = amount - commission_amount;
-
-  // Estimate Stripe fees (2.9% + $0.30 for US, adjust for Brazil)
   const stripe_fee_estimate = Math.round(amount * 0.029 + 30);
 
   return {
@@ -70,35 +75,29 @@ export async function createConnectAccount(
   const {
     partner_id,
     email,
-    country = 'BR', // Default to Brazil
+    country = 'BR',
     business_type = 'individual',
     metadata = {}
   } = params;
 
-  try {
-    const account = await stripe.accounts.create({
-      type: CONNECT_ACCOUNT_TYPE,
-      country,
-      email,
-      business_type,
-      capabilities: {
-        // Enable card payments and transfers
-        card_payments: { requested: true },
-        transfers: { requested: true }
-      },
-      metadata: {
-        partner_id,
-        platform: 'bposs_white_label',
-        created_via: 'api',
-        ...metadata
-      }
-    });
+  const account = await getStripe().accounts.create({
+    type: CONNECT_ACCOUNT_TYPE,
+    country,
+    email,
+    business_type,
+    capabilities: {
+      card_payments: { requested: true },
+      transfers: { requested: true }
+    },
+    metadata: {
+      partner_id,
+      platform: 'bposs_white_label',
+      created_via: 'api',
+      ...metadata
+    }
+  });
 
-    return account;
-  } catch (error) {
-    console.error('Error creating Stripe Connect account:', error);
-    throw error;
-  }
+  return account;
 }
 
 /**
@@ -109,65 +108,38 @@ export async function createAccountLink(
 ): Promise<Stripe.AccountLink> {
   const { account_id, refresh_url, return_url, type } = params;
 
-  try {
-    const accountLink = await stripe.accountLinks.create({
-      account: account_id,
-      refresh_url,
-      return_url,
-      type
-    });
+  const accountLink = await getStripe().accountLinks.create({
+    account: account_id,
+    refresh_url,
+    return_url,
+    type
+  });
 
-    return accountLink;
-  } catch (error) {
-    console.error('Error creating account link:', error);
-    throw error;
-  }
+  return accountLink;
 }
 
 /**
  * Retrieve a Connect account by ID
  */
-export async function getConnectAccount(
-  accountId: string
-): Promise<Stripe.Account> {
-  try {
-    const account = await stripe.accounts.retrieve(accountId);
-    return account;
-  } catch (error) {
-    console.error('Error retrieving Stripe account:', error);
-    throw error;
-  }
+export async function getConnectAccount(accountId: string): Promise<Stripe.Account> {
+  return await getStripe().accounts.retrieve(accountId);
 }
 
 /**
- * Update Connect account metadata or settings
+ * Update Connect account
  */
 export async function updateConnectAccount(
   accountId: string,
   updates: Stripe.AccountUpdateParams
 ): Promise<Stripe.Account> {
-  try {
-    const account = await stripe.accounts.update(accountId, updates);
-    return account;
-  } catch (error) {
-    console.error('Error updating Stripe account:', error);
-    throw error;
-  }
+  return await getStripe().accounts.update(accountId, updates);
 }
 
 /**
  * Delete/deactivate a Connect account
  */
-export async function deleteConnectAccount(
-  accountId: string
-): Promise<Stripe.DeletedAccount> {
-  try {
-    const deleted = await stripe.accounts.del(accountId);
-    return deleted;
-  } catch (error) {
-    console.error('Error deleting Stripe account:', error);
-    throw error;
-  }
+export async function deleteConnectAccount(accountId: string): Promise<Stripe.DeletedAccount> {
+  return await getStripe().accounts.del(accountId);
 }
 
 /**
@@ -188,148 +160,51 @@ export async function createPaymentIntentWithTransfer(
     return_url
   } = params;
 
-  // Calculate split
   const split = calculateSplit({
     amount,
     commission_rate: partnerAccount.commission_rate
   });
 
-  try {
-    const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
-      amount,
-      currency: currency.toLowerCase(),
-      customer: customer_id,
-      description: description || `Payment for ${partnerAccount.business_name || 'MOTTIVME service'}`,
+  const paymentIntentParams: Stripe.PaymentIntentCreateParams = {
+    amount,
+    currency: currency.toLowerCase(),
+    customer: customer_id,
+    description: description || `Payment for ${partnerAccount.business_name || 'MOTTIVME service'}`,
+    transfer_data: {
+      destination: partnerAccount.stripe_account_id,
+      amount: split.commission_amount
+    },
+    application_fee_amount: split.platform_amount,
+    metadata: {
+      partner_id: partnerAccount.partner_id,
+      partner_tier: partnerAccount.tier,
+      commission_rate: partnerAccount.commission_rate.toString(),
+      commission_amount: split.commission_amount.toString(),
+      platform_amount: split.platform_amount.toString(),
+      ...metadata
+    },
+    receipt_email: customer_email
+  };
 
-      // Transfer commission to partner
-      transfer_data: {
-        destination: partnerAccount.stripe_account_id,
-        amount: split.commission_amount
-      },
-
-      // Platform keeps the difference automatically
-      application_fee_amount: split.platform_amount,
-
-      metadata: {
-        partner_id: partnerAccount.partner_id,
-        partner_tier: partnerAccount.tier,
-        commission_rate: partnerAccount.commission_rate.toString(),
-        commission_amount: split.commission_amount.toString(),
-        platform_amount: split.platform_amount.toString(),
-        ...metadata
-      },
-
-      // Enable receipt emails
-      receipt_email: customer_email
+  if (automatic_payment_methods) {
+    paymentIntentParams.automatic_payment_methods = {
+      enabled: true,
+      allow_redirects: 'never'
     };
-
-    // Add automatic payment methods if enabled
-    if (automatic_payment_methods) {
-      paymentIntentParams.automatic_payment_methods = {
-        enabled: true,
-        allow_redirects: 'never'
-      };
-    }
-
-    // Add return URL if provided (for redirect-based flows)
-    if (return_url) {
-      paymentIntentParams.return_url = return_url;
-    }
-
-    const paymentIntent = await stripe.paymentIntents.create(paymentIntentParams);
-    return paymentIntent;
-  } catch (error) {
-    console.error('Error creating payment intent with transfer:', error);
-    throw error;
   }
-}
 
-/**
- * Create a direct charge to a connected account
- * (Alternative to transfer_data - use for different scenarios)
- */
-export async function createDirectCharge(
-  params: CreatePaymentIntentParams,
-  partnerAccount: PartnerStripeAccount
-): Promise<Stripe.PaymentIntent> {
-  const {
-    amount,
-    currency,
-    customer_id,
-    customer_email,
-    description,
-    metadata = {}
-  } = params;
-
-  // Calculate platform fee (inverse of commission)
-  const split = calculateSplit({
-    amount,
-    commission_rate: partnerAccount.commission_rate
-  });
-
-  try {
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency: currency.toLowerCase(),
-      customer: customer_id,
-      description,
-      application_fee_amount: split.platform_amount,
-      receipt_email: customer_email,
-      metadata: {
-        partner_id: partnerAccount.partner_id,
-        partner_tier: partnerAccount.tier,
-        commission_rate: partnerAccount.commission_rate.toString(),
-        ...metadata
-      }
-    }, {
-      stripeAccount: partnerAccount.stripe_account_id
-    });
-
-    return paymentIntent;
-  } catch (error) {
-    console.error('Error creating direct charge:', error);
-    throw error;
+  if (return_url) {
+    paymentIntentParams.return_url = return_url;
   }
-}
 
-/**
- * Refund a payment
- */
-export async function createRefund(
-  paymentIntentId: string,
-  amount?: number,
-  reason?: Stripe.RefundCreateParams.Reason
-): Promise<Stripe.Refund> {
-  try {
-    const refund = await stripe.refunds.create({
-      payment_intent: paymentIntentId,
-      amount, // Partial refund if specified, full refund if omitted
-      reason: reason || 'requested_by_customer'
-    });
-
-    return refund;
-  } catch (error) {
-    console.error('Error creating refund:', error);
-    throw error;
-  }
+  return await getStripe().paymentIntents.create(paymentIntentParams);
 }
 
 /**
  * Get account balance for a connected account
  */
-export async function getAccountBalance(
-  accountId: string
-): Promise<Stripe.Balance> {
-  try {
-    const balance = await stripe.balance.retrieve({
-      stripeAccount: accountId
-    });
-
-    return balance;
-  } catch (error) {
-    console.error('Error retrieving account balance:', error);
-    throw error;
-  }
+export async function getAccountBalance(accountId: string): Promise<Stripe.Balance> {
+  return await getStripe().balance.retrieve({ stripeAccount: accountId });
 }
 
 /**
@@ -339,22 +214,11 @@ export async function listPayouts(
   accountId: string,
   limit: number = 10
 ): Promise<Stripe.ApiList<Stripe.Payout>> {
-  try {
-    const payouts = await stripe.payouts.list({
-      limit
-    }, {
-      stripeAccount: accountId
-    });
-
-    return payouts;
-  } catch (error) {
-    console.error('Error listing payouts:', error);
-    throw error;
-  }
+  return await getStripe().payouts.list({ limit }, { stripeAccount: accountId });
 }
 
 /**
- * Create a payout to a connected account's bank account
+ * Create a payout
  */
 export async function createPayout(
   accountId: string,
@@ -362,21 +226,10 @@ export async function createPayout(
   currency: string = 'brl',
   description?: string
 ): Promise<Stripe.Payout> {
-  try {
-    const payout = await stripe.payouts.create({
-      amount,
-      currency,
-      description,
-      method: 'standard' // or 'instant' for instant payouts
-    }, {
-      stripeAccount: accountId
-    });
-
-    return payout;
-  } catch (error) {
-    console.error('Error creating payout:', error);
-    throw error;
-  }
+  return await getStripe().payouts.create(
+    { amount, currency, description, method: 'standard' },
+    { stripeAccount: accountId }
+  );
 }
 
 /**
@@ -386,36 +239,32 @@ export async function listTransfers(
   destination: string,
   limit: number = 10
 ): Promise<Stripe.ApiList<Stripe.Transfer>> {
-  try {
-    const transfers = await stripe.transfers.list({
-      destination,
-      limit
-    });
-
-    return transfers;
-  } catch (error) {
-    console.error('Error listing transfers:', error);
-    throw error;
-  }
+  return await getStripe().transfers.list({ destination, limit });
 }
 
 /**
- * Reverse a transfer (cancel/refund to platform)
+ * Reverse a transfer
  */
 export async function reverseTransfer(
   transferId: string,
   amount?: number
 ): Promise<Stripe.TransferReversal> {
-  try {
-    const reversal = await stripe.transfers.createReversal(transferId, {
-      amount // Partial reversal if specified, full if omitted
-    });
+  return await getStripe().transfers.createReversal(transferId, { amount });
+}
 
-    return reversal;
-  } catch (error) {
-    console.error('Error reversing transfer:', error);
-    throw error;
-  }
+/**
+ * Create refund
+ */
+export async function createRefund(
+  paymentIntentId: string,
+  amount?: number,
+  reason?: Stripe.RefundCreateParams.Reason
+): Promise<Stripe.Refund> {
+  return await getStripe().refunds.create({
+    payment_intent: paymentIntentId,
+    amount,
+    reason: reason || 'requested_by_customer'
+  });
 }
 
 /**
@@ -425,11 +274,9 @@ export function mapStripeAccountStatus(account: Stripe.Account): StripeAccountSt
   if (!account.charges_enabled && !account.payouts_enabled) {
     return StripeAccountStatus.PENDING;
   }
-
   if (account.charges_enabled && account.payouts_enabled) {
     return StripeAccountStatus.ACTIVE;
   }
-
   if (account.requirements?.disabled_reason) {
     const reason = account.requirements.disabled_reason;
     if (reason === 'rejected.fraud' || reason === 'rejected.terms_of_service') {
@@ -437,7 +284,6 @@ export function mapStripeAccountStatus(account: Stripe.Account): StripeAccountSt
     }
     return StripeAccountStatus.RESTRICTED;
   }
-
   return StripeAccountStatus.PENDING;
 }
 
@@ -449,17 +295,11 @@ export function verifyWebhookSignature(
   signature: string,
   secret: string
 ): Stripe.Event {
-  try {
-    const event = stripe.webhooks.constructEvent(payload, signature, secret);
-    return event;
-  } catch (error) {
-    console.error('Error verifying webhook signature:', error);
-    throw new Error('Invalid webhook signature');
-  }
+  return getStripe().webhooks.constructEvent(payload, signature, secret);
 }
 
 /**
- * Format amount for display (cents to currency)
+ * Format amount for display
  */
 export function formatAmount(amount: number, currency: string = 'BRL'): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -468,16 +308,10 @@ export function formatAmount(amount: number, currency: string = 'BRL'): string {
   }).format(amount / 100);
 }
 
-/**
- * Convert currency string to cents
- */
 export function toCents(amount: number): number {
   return Math.round(amount * 100);
 }
 
-/**
- * Convert cents to currency
- */
 export function fromCents(amount: number): number {
   return amount / 100;
 }

@@ -27,10 +27,17 @@ interface Alert {
 }
 
 const severityColors = {
-  low: 'bg-blue-100 text-blue-800 border-blue-200',
-  medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  high: 'bg-orange-100 text-orange-800 border-orange-200',
-  critical: 'bg-red-100 text-red-800 border-red-200',
+  low: 'bg-accent-primary/20 text-accent-primary border-accent-primary/30',
+  medium: 'bg-accent-warning/20 text-accent-warning border-accent-warning/30',
+  high: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
+  critical: 'bg-accent-error/20 text-accent-error border-accent-error/30',
+};
+
+const severityBorderColors = {
+  low: 'border-l-accent-primary',
+  medium: 'border-l-accent-warning',
+  high: 'border-l-orange-500',
+  critical: 'border-l-accent-error',
 };
 
 const severityIcons = {
@@ -41,10 +48,10 @@ const severityIcons = {
 };
 
 const statusColors = {
-  active: 'bg-red-100 text-red-800',
-  acknowledged: 'bg-yellow-100 text-yellow-800',
-  resolved: 'bg-green-100 text-green-800',
-  dismissed: 'bg-gray-100 text-gray-800',
+  active: 'bg-accent-error/20 text-accent-error',
+  acknowledged: 'bg-accent-warning/20 text-accent-warning',
+  resolved: 'bg-accent-success/20 text-accent-success',
+  dismissed: 'bg-bg-tertiary text-text-muted',
 };
 
 const typeIcons: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -188,10 +195,10 @@ export default function AlertsPage() {
 
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-bg-primary">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+          <p className="mt-4 text-text-secondary">Carregando...</p>
         </div>
       </div>
     );
@@ -205,15 +212,15 @@ export default function AlertsPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-bg-primary">
       <Sidebar />
 
       <div className="flex-1 overflow-auto">
         <div className="p-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">🚨 Alertas do SENTINEL</h1>
-              <p className="mt-2 text-gray-600">
+              <h1 className="text-3xl font-bold text-text-primary">🚨 Alertas do SENTINEL</h1>
+              <p className="mt-2 text-text-secondary">
                 Sistema de Inteligência de Alertas - Análise AI em tempo real
               </p>
             </div>
@@ -222,56 +229,56 @@ export default function AlertsPage() {
 
           {/* Stats Cards */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-accent-primary/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Total no Período</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                  <p className="text-sm text-text-secondary">Total no Período</p>
+                  <p className="text-3xl font-bold text-text-primary mt-1">{stats.total}</p>
                 </div>
-                <AlertCircle className="h-12 w-12 text-blue-500" />
+                <AlertCircle className="h-12 w-12 text-accent-primary" />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-accent-warning/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Ativos</p>
-                  <p className="text-3xl font-bold text-orange-600 mt-1">{stats.active}</p>
+                  <p className="text-sm text-text-secondary">Ativos</p>
+                  <p className="text-3xl font-bold text-accent-warning mt-1">{stats.active}</p>
                 </div>
-                <Clock className="h-12 w-12 text-orange-500" />
+                <Clock className="h-12 w-12 text-accent-warning" />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-accent-error/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Críticos</p>
-                  <p className="text-3xl font-bold text-red-600 mt-1">{stats.critical}</p>
+                  <p className="text-sm text-text-secondary">Críticos</p>
+                  <p className="text-3xl font-bold text-accent-error mt-1">{stats.critical}</p>
                 </div>
-                <XCircle className="h-12 w-12 text-red-500" />
+                <XCircle className="h-12 w-12 text-accent-error" />
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow">
+            <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-accent-success/50 transition-colors">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600">Resolvidos</p>
-                  <p className="text-3xl font-bold text-green-600 mt-1">{stats.resolved}</p>
+                  <p className="text-sm text-text-secondary">Resolvidos</p>
+                  <p className="text-3xl font-bold text-accent-success mt-1">{stats.resolved}</p>
                 </div>
-                <CheckCircle className="h-12 w-12 text-green-500" />
+                <CheckCircle className="h-12 w-12 text-accent-success" />
               </div>
             </div>
           </div>
 
           {/* Filters */}
-          <div className="bg-white p-4 rounded-lg shadow mb-6">
+          <div className="bg-bg-secondary p-4 rounded-lg border border-border-default mb-6">
             <div className="flex gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Status</label>
                 <select
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-4 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
                 >
                   <option value="all">Todos</option>
                   <option value="active">Ativos</option>
@@ -282,11 +289,11 @@ export default function AlertsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Severidade</label>
+                <label className="block text-sm font-medium text-text-secondary mb-2">Severidade</label>
                 <select
                   value={filterSeverity}
                   onChange={(e) => setFilterSeverity(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="px-4 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary"
                 >
                   <option value="all">Todas</option>
                   <option value="critical">Crítica</option>
@@ -301,15 +308,15 @@ export default function AlertsPage() {
           {/* Alerts List */}
           <div className="space-y-4">
             {loadingAlerts ? (
-              <div className="bg-white p-12 rounded-lg shadow text-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Carregando alertas...</p>
+              <div className="bg-bg-secondary p-12 rounded-lg border border-border-default text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                <p className="mt-4 text-text-secondary">Carregando alertas...</p>
               </div>
             ) : filteredAlerts.length === 0 ? (
-              <div className="bg-white p-12 rounded-lg shadow text-center">
-                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                <p className="text-gray-900 font-semibold text-lg">Nenhum alerta encontrado</p>
-                <p className="text-gray-500 mt-2">
+              <div className="bg-bg-secondary p-12 rounded-lg border border-border-default text-center">
+                <CheckCircle className="h-16 w-16 text-accent-success mx-auto mb-4" />
+                <p className="text-text-primary font-semibold text-lg">Nenhum alerta encontrado</p>
+                <p className="text-text-muted mt-2">
                   {filterStatus !== 'all' || filterSeverity !== 'all'
                     ? 'Tente ajustar os filtros'
                     : 'Sistema funcionando normalmente no período'}
@@ -324,15 +331,14 @@ export default function AlertsPage() {
                 return (
                   <div
                     key={alert.id}
-                    className={`bg-white rounded-lg shadow border-l-4 ${severityColors[alert.severity]
-                      } overflow-hidden`}
+                    className={`bg-bg-secondary rounded-lg border border-border-default border-l-4 ${severityBorderColors[alert.severity]} overflow-hidden hover:border-border-default/80 transition-colors`}
                   >
                     <div className="p-6">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-3 mb-2">
-                            <TypeIcon className="h-6 w-6 text-gray-600" />
-                            <h3 className="text-lg font-semibold text-gray-900">{alert.title}</h3>
+                            <TypeIcon className="h-6 w-6 text-text-secondary" />
+                            <h3 className="text-lg font-semibold text-text-primary">{alert.title}</h3>
                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${statusColors[alert.status]}`}>
                               {alert.status}
                             </span>
@@ -341,9 +347,9 @@ export default function AlertsPage() {
                             </span>
                           </div>
 
-                          <p className="text-gray-700 mb-4">{alert.description}</p>
+                          <p className="text-text-secondary mb-4">{alert.description}</p>
 
-                          <div className="flex items-center gap-6 text-sm text-gray-500">
+                          <div className="flex items-center gap-6 text-sm text-text-muted">
                             <span>🎯 Confiança: {alert.confidence_score ? (alert.confidence_score * 100).toFixed(0) : 'N/A'}%</span>
                             <span>⏰ {formatDate(alert.created_at)}</span>
                             <span>👥 {alert.affected_team_members?.join(', ')}</span>
@@ -351,18 +357,18 @@ export default function AlertsPage() {
 
                           {isExpanded && (
                             <div className="mt-6 space-y-4">
-                              <div className="bg-blue-50 p-4 rounded-lg">
-                                <h4 className="font-semibold text-blue-900 mb-2">🤖 Análise AI</h4>
-                                <p className="text-blue-800 text-sm">{alert.ai_reasoning || 'Análise AI não disponível para este alerta.'}</p>
+                              <div className="bg-accent-primary/10 border border-accent-primary/20 p-4 rounded-lg">
+                                <h4 className="font-semibold text-accent-primary mb-2">🤖 Análise AI</h4>
+                                <p className="text-text-secondary text-sm">{alert.ai_reasoning || 'Análise AI não disponível para este alerta.'}</p>
                               </div>
 
                               {alert.suggested_actions && alert.suggested_actions.length > 0 && (
-                                <div className="bg-green-50 p-4 rounded-lg">
-                                  <h4 className="font-semibold text-green-900 mb-2">✅ Ações Sugeridas</h4>
+                                <div className="bg-accent-success/10 border border-accent-success/20 p-4 rounded-lg">
+                                  <h4 className="font-semibold text-accent-success mb-2">✅ Ações Sugeridas</h4>
                                   <ul className="space-y-2">
                                     {alert.suggested_actions.map((action, idx) => (
-                                      <li key={idx} className="text-green-800 text-sm flex items-start">
-                                        <span className="mr-2">•</span>
+                                      <li key={idx} className="text-text-secondary text-sm flex items-start">
+                                        <span className="mr-2 text-accent-success">•</span>
                                         <span>{action}</span>
                                       </li>
                                     ))}
@@ -371,13 +377,13 @@ export default function AlertsPage() {
                               )}
 
                               {alert.acknowledged_at && (
-                                <div className="text-sm text-gray-600">
+                                <div className="text-sm text-text-muted">
                                   ✓ Reconhecido por {alert.acknowledged_by} em {formatDate(alert.acknowledged_at)}
                                 </div>
                               )}
 
                               {alert.resolved_at && (
-                                <div className="text-sm text-green-600">
+                                <div className="text-sm text-accent-success">
                                   ✅ Resolvido por {alert.resolved_by} em {formatDate(alert.resolved_at)}
                                 </div>
                               )}
@@ -389,7 +395,7 @@ export default function AlertsPage() {
                       <div className="mt-4 flex items-center gap-3">
                         <button
                           onClick={() => toggleExpand(alert.id)}
-                          className="text-indigo-600 hover:text-indigo-800 font-medium text-sm flex items-center gap-1"
+                          className="text-accent-primary hover:text-accent-primary/80 font-medium text-sm flex items-center gap-1 transition-colors"
                         >
                           {isExpanded ? (
                             <>
@@ -405,7 +411,7 @@ export default function AlertsPage() {
                         {alert.status === 'active' && (
                           <button
                             onClick={() => handleAcknowledge(alert.id)}
-                            className="px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 text-sm font-medium"
+                            className="px-4 py-2 bg-accent-warning text-white rounded-lg hover:bg-accent-warning/80 text-sm font-medium transition-colors"
                           >
                             Reconhecer
                           </button>
@@ -414,7 +420,7 @@ export default function AlertsPage() {
                         {(alert.status === 'active' || alert.status === 'acknowledged') && (
                           <button
                             onClick={() => handleResolve(alert.id)}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+                            className="px-4 py-2 bg-accent-success text-white rounded-lg hover:bg-accent-success/80 text-sm font-medium transition-colors"
                           >
                             Resolver
                           </button>

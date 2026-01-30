@@ -1,343 +1,234 @@
 'use client';
 
-import { useMemo } from 'react';
-import {
-  Clock,
-  PlayCircle,
-  Pause,
-  CheckCircle,
-  Calendar,
-  Timer,
-  AlertTriangle,
-} from 'lucide-react';
+import React, { useState, useCallback, useMemo } from 'react';
+import { arrayMove } from '@dnd-kit/sortable';
+import DndProvider, { DragEndEvent, DragStartEvent, DragOverEvent } from './DndProvider';
+import DroppableColumn, { COLUMNS } from './DroppableColumn';
+import { DraggableCardOverlay } from './DraggableCard';
 
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface Task {
-  id: string;
-  project_key: string;
-  title: string;
-  description: string | null;
-  status: 'pending' | 'in_progress' | 'completed' | 'blocked' | 'cancelled';
-  priority: 'urgent' | 'high' | 'medium' | 'low';
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-  started_at: string | null;
-  completed_at: string | null;
-  due_date: string | null;
-  estimated_hours: number | null;
-  actual_hours: number | null;
-  time_to_start_minutes: number | null;
-  time_to_complete_minutes: number | null;
-  total_duration_minutes: number | null;
-  assigned_to: string | null;
+interface Task {
+    id: string;
+    project_key: string;
+    title: string;
+    description: string | null;
+    status: 'pending' | 'in_progress' | 'completed' | 'blocked' | 'cancelled';
+    priority: 'urgent' | 'high' | 'medium' | 'low';
+    notes: string | null;
+    created_at: string;
+    updated_at: string;
+    started_at: string | null;
+    completed_at: string | null;
+    due_date: string | null;
+    estimated_hours: number | null;
+    actual_hours: number | null;
+    time_to_start_minutes: number | null;
+    time_to_complete_minutes: number | null;
+    total_duration_minutes: number | null;
+    assigned_to: string | null;
 }
 
-export type KanbanStatus = 'pending' | 'in_progress' | 'blocked' | 'completed';
-
-export interface KanbanBoardProps {
-  tasks: Task[];
-  onTaskMove: (taskId: string, newStatus: string) => void;
-  onTaskClick: (task: Task) => void;
+interface KanbanBoardProps {
+    tasks: Task[];
+    onTaskStatusChange: (taskId: string, newStatus: Task['status'], newPosition?: number) => Promise<void>;
+    getProjectName: (projectKey: string) => string;
+    onAddTask?: () => void;
 }
 
-// ============================================================================
-// Column Configuration
-// ============================================================================
+export default function KanbanBoard({
+    tasks,
+    onTaskStatusChange,
+    getProjectName,
+    onAddTask,
+}: KanbanBoardProps) {
+    const [activeTask, setActiveTask] = useState<Task | null>(null);
+    const [localTasks, setLocalTasks] = useState<Task[]>(tasks);
+    const [isUpdating, setIsUpdating] = useState(false);
 
-interface ColumnConfig {
-  id: KanbanStatus;
-  title: string;
-  icon: React.ReactNode;
-  headerBg: string;
-  headerText: string;
-  cardBorder: string;
-  countBg: string;
-  countText: string;
-}
+    // Sync local tasks when props change
+    React.useEffect(() => {
+        setLocalTasks(tasks);
+    }, [tasks]);
 
-const COLUMNS: ColumnConfig[] = [
-  {
-    id: 'pending',
-    title: 'Backlog',
-    icon: <Clock className="h-5 w-5" />,
-    headerBg: 'bg-gray-100',
-    headerText: 'text-gray-700',
-    cardBorder: 'border-l-gray-400',
-    countBg: 'bg-gray-200',
-    countText: 'text-gray-700',
-  },
-  {
-    id: 'in_progress',
-    title: 'Em Progresso',
-    icon: <PlayCircle className="h-5 w-5" />,
-    headerBg: 'bg-blue-100',
-    headerText: 'text-blue-700',
-    cardBorder: 'border-l-blue-500',
-    countBg: 'bg-blue-200',
-    countText: 'text-blue-700',
-  },
-  {
-    id: 'blocked',
-    title: 'Bloqueado',
-    icon: <Pause className="h-5 w-5" />,
-    headerBg: 'bg-red-100',
-    headerText: 'text-red-700',
-    cardBorder: 'border-l-red-500',
-    countBg: 'bg-red-200',
-    countText: 'text-red-700',
-  },
-  {
-    id: 'completed',
-    title: 'Concluído',
-    icon: <CheckCircle className="h-5 w-5" />,
-    headerBg: 'bg-green-100',
-    headerText: 'text-green-700',
-    cardBorder: 'border-l-green-500',
-    countBg: 'bg-green-200',
-    countText: 'text-green-700',
-  },
-];
+    // Group tasks by status
+    const tasksByStatus = useMemo(() => {
+        const grouped: Record<Task['status'], Task[]> = {
+            pending: [],
+            in_progress: [],
+            blocked: [],
+            completed: [],
+            cancelled: [],
+        };
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
+        // Sort by priority within each group
+        const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
 
-const getPriorityConfig = (priority: Task['priority']) => {
-  const configs = {
-    urgent: { bg: 'bg-red-100', text: 'text-red-800', border: 'border-red-300', label: 'Urgente' },
-    high: { bg: 'bg-orange-100', text: 'text-orange-800', border: 'border-orange-300', label: 'Alta' },
-    medium: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300', label: 'Média' },
-    low: { bg: 'bg-blue-100', text: 'text-blue-800', border: 'border-blue-300', label: 'Baixa' },
-  };
-  return configs[priority] || configs.medium;
-};
+        localTasks.forEach((task) => {
+            if (grouped[task.status]) {
+                grouped[task.status].push(task);
+            }
+        });
 
-const formatDate = (dateString: string | null) => {
-  if (!dateString) return null;
-  const date = new Date(dateString);
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-};
+        // Sort each column by priority
+        Object.keys(grouped).forEach((status) => {
+            grouped[status as Task['status']].sort(
+                (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]
+            );
+        });
 
-const isOverdue = (dueDate: string | null, status: Task['status']) => {
-  if (!dueDate || status === 'completed') return false;
-  return new Date(dueDate) < new Date();
-};
+        return grouped;
+    }, [localTasks]);
 
-// ============================================================================
-// KanbanCard Component
-// ============================================================================
+    const handleDragStart = useCallback((event: DragStartEvent) => {
+        const { active } = event;
+        const task = localTasks.find((t) => t.id === active.id);
+        if (task) {
+            setActiveTask(task);
+        }
+    }, [localTasks]);
 
-interface KanbanCardProps {
-  task: Task;
-  columnConfig: ColumnConfig;
-  onClick: () => void;
-}
+    const handleDragOver = useCallback((event: DragOverEvent) => {
+        const { active, over } = event;
+        if (!over) return;
 
-function KanbanCard({ task, columnConfig, onClick }: KanbanCardProps) {
-  const priorityConfig = getPriorityConfig(task.priority);
-  const overdue = isOverdue(task.due_date, task.status);
+        const activeId = active.id as string;
+        const overId = over.id as string;
 
-  return (
-    <div
-      onClick={onClick}
-      className={`
-        bg-white rounded-lg shadow-sm border border-gray-200 border-l-4 ${columnConfig.cardBorder}
-        p-3 cursor-pointer hover:shadow-md transition-all duration-200
-        hover:translate-y-[-2px] active:translate-y-0
-      `}
-    >
-      {/* Title & Priority */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h4 className="font-medium text-gray-900 text-sm leading-tight flex-1 line-clamp-2">
-          {task.title}
-        </h4>
-        <span
-          className={`
-            px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase shrink-0
-            ${priorityConfig.bg} ${priorityConfig.text} border ${priorityConfig.border}
-          `}
-        >
-          {priorityConfig.label}
-        </span>
-      </div>
+        // Get the task being dragged
+        const activeTask = localTasks.find((t) => t.id === activeId);
+        if (!activeTask) return;
 
-      {/* Description */}
-      {task.description && (
-        <p className="text-xs text-gray-500 mb-2 line-clamp-2">
-          {task.description}
-        </p>
-      )}
+        // Determine target status
+        let targetStatus: Task['status'] | null = null;
 
-      {/* Metadata Row */}
-      <div className="flex flex-wrap items-center gap-2 text-[10px] text-gray-500">
-        {/* Project Key */}
-        <span className="bg-gray-100 px-1.5 py-0.5 rounded font-mono">
-          {task.project_key}
-        </span>
+        // Check if over a column
+        const overColumn = COLUMNS.find((col) => col.id === overId);
+        if (overColumn) {
+            targetStatus = overColumn.status;
+        } else {
+            // Check if over another task
+            const overTask = localTasks.find((t) => t.id === overId);
+            if (overTask) {
+                targetStatus = overTask.status;
+            }
+        }
 
-        {/* Due Date */}
-        {task.due_date && (
-          <span
-            className={`
-              flex items-center gap-1 px-1.5 py-0.5 rounded
-              ${overdue ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}
-            `}
-          >
-            {overdue && <AlertTriangle className="h-3 w-3" />}
-            <Calendar className="h-3 w-3" />
-            {formatDate(task.due_date)}
-          </span>
-        )}
+        // If moving to a different column, update locally for visual feedback
+        if (targetStatus && activeTask.status !== targetStatus) {
+            setLocalTasks((prev) =>
+                prev.map((t) =>
+                    t.id === activeId ? { ...t, status: targetStatus! } : t
+                )
+            );
+        }
+    }, [localTasks]);
 
-        {/* Estimated Hours */}
-        {task.estimated_hours && (
-          <span className="flex items-center gap-1 bg-purple-50 text-purple-700 px-1.5 py-0.5 rounded">
-            <Timer className="h-3 w-3" />
-            {task.estimated_hours}h
-          </span>
-        )}
+    const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+        const { active, over } = event;
+        setActiveTask(null);
 
-        {/* Completion Time (for completed tasks) */}
-        {task.status === 'completed' && task.time_to_complete_minutes && (
-          <span className="flex items-center gap-1 bg-green-50 text-green-700 px-1.5 py-0.5 rounded">
-            <CheckCircle className="h-3 w-3" />
-            {Math.round(task.time_to_complete_minutes / 60)}h
-          </span>
-        )}
-      </div>
+        if (!over) {
+            // Reset to original tasks if dropped outside
+            setLocalTasks(tasks);
+            return;
+        }
 
-      {/* Assigned To */}
-      {task.assigned_to && (
-        <div className="mt-2 pt-2 border-t border-gray-100">
-          <span className="text-[10px] text-gray-400">
-            Atribuído: <span className="text-gray-600">{task.assigned_to}</span>
-          </span>
+        const activeId = active.id as string;
+        const overId = over.id as string;
+
+        // Find the task that was dragged
+        const draggedTask = tasks.find((t) => t.id === activeId);
+        if (!draggedTask) return;
+
+        // Determine target status
+        let targetStatus: Task['status'] = draggedTask.status;
+
+        // Check if over a column
+        const overColumn = COLUMNS.find((col) => col.id === overId);
+        if (overColumn) {
+            targetStatus = overColumn.status;
+        } else {
+            // Check if over another task
+            const overTask = localTasks.find((t) => t.id === overId);
+            if (overTask) {
+                targetStatus = overTask.status;
+            }
+        }
+
+        // Calculate new position (index within the column)
+        const targetTasks = tasksByStatus[targetStatus] || [];
+        let newPosition = targetTasks.findIndex((t) => t.id === overId);
+        if (newPosition === -1) {
+            newPosition = targetTasks.length;
+        }
+
+        // Only call API if status changed
+        if (targetStatus !== draggedTask.status) {
+            setIsUpdating(true);
+            try {
+                await onTaskStatusChange(activeId, targetStatus, newPosition);
+            } catch (error) {
+                console.error('Failed to update task status:', error);
+                // Revert to original tasks on error
+                setLocalTasks(tasks);
+            } finally {
+                setIsUpdating(false);
+            }
+        } else {
+            // Same column reordering - update locally (position is optional)
+            // For now we just keep the new visual order
+            const oldIndex = targetTasks.findIndex((t) => t.id === activeId);
+            if (oldIndex !== -1 && oldIndex !== newPosition) {
+                const newTasks = [...localTasks];
+                const statusTasks = newTasks.filter((t) => t.status === targetStatus);
+                const reordered = arrayMove(statusTasks, oldIndex, newPosition);
+                
+                // Rebuild full task list with reordered status group
+                const otherTasks = newTasks.filter((t) => t.status !== targetStatus);
+                setLocalTasks([...otherTasks, ...reordered]);
+            }
+        }
+    }, [tasks, localTasks, tasksByStatus, onTaskStatusChange]);
+
+    // Filter columns to show (exclude cancelled unless there are cancelled tasks)
+    const visibleColumns = COLUMNS.filter(
+        (col) => col.status !== 'cancelled' || tasksByStatus.cancelled.length > 0
+    );
+
+    return (
+        <div className={`relative ${isUpdating ? 'opacity-75' : ''}`}>
+            {isUpdating && (
+                <div className="absolute top-2 right-2 z-10 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                    Atualizando...
+                </div>
+            )}
+            
+            <DndProvider
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDragEnd={handleDragEnd}
+                overlay={
+                    activeTask ? (
+                        <DraggableCardOverlay
+                            task={activeTask}
+                            projectName={getProjectName(activeTask.project_key)}
+                        />
+                    ) : null
+                }
+            >
+                <div className="flex gap-4 overflow-x-auto pb-4 px-1">
+                    {visibleColumns.map((column) => (
+                        <DroppableColumn
+                            key={column.id}
+                            column={column}
+                            tasks={tasksByStatus[column.status] || []}
+                            getProjectName={getProjectName}
+                            onAddTask={column.status === 'pending' ? onAddTask : undefined}
+                            activeId={activeTask?.id}
+                        />
+                    ))}
+                </div>
+            </DndProvider>
         </div>
-      )}
-    </div>
-  );
+    );
 }
-
-// ============================================================================
-// KanbanColumn Component
-// ============================================================================
-
-interface KanbanColumnProps {
-  config: ColumnConfig;
-  tasks: Task[];
-  onTaskClick: (task: Task) => void;
-}
-
-function KanbanColumn({ config, tasks, onTaskClick }: KanbanColumnProps) {
-  // Sort tasks by priority
-  const sortedTasks = useMemo(() => {
-    const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
-    return [...tasks].sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-  }, [tasks]);
-
-  return (
-    <div className="flex flex-col min-w-[280px] md:min-w-0 md:flex-1 bg-gray-50 rounded-lg">
-      {/* Column Header */}
-      <div className={`${config.headerBg} rounded-t-lg p-3 sticky top-0 z-10`}>
-        <div className="flex items-center justify-between">
-          <div className={`flex items-center gap-2 ${config.headerText}`}>
-            {config.icon}
-            <h3 className="font-semibold text-sm">{config.title}</h3>
-          </div>
-          <span
-            className={`
-              ${config.countBg} ${config.countText}
-              px-2 py-0.5 rounded-full text-xs font-bold min-w-[24px] text-center
-            `}
-          >
-            {tasks.length}
-          </span>
-        </div>
-      </div>
-
-      {/* Cards Container - Scrollable */}
-      <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)] md:max-h-[calc(100vh-240px)]">
-        {sortedTasks.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 text-sm">
-            Nenhuma tarefa
-          </div>
-        ) : (
-          sortedTasks.map((task) => (
-            <KanbanCard
-              key={task.id}
-              task={task}
-              columnConfig={config}
-              onClick={() => onTaskClick(task)}
-            />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================================
-// KanbanBoard Component (Main Export)
-// ============================================================================
-
-export default function KanbanBoard({ tasks, onTaskMove, onTaskClick }: KanbanBoardProps) {
-  // Group tasks by status
-  const tasksByStatus = useMemo(() => {
-    const grouped: Record<KanbanStatus, Task[]> = {
-      pending: [],
-      in_progress: [],
-      blocked: [],
-      completed: [],
-    };
-
-    tasks.forEach((task) => {
-      // Only include tasks with kanban-compatible statuses
-      if (task.status in grouped) {
-        grouped[task.status as KanbanStatus].push(task);
-      }
-    });
-
-    return grouped;
-  }, [tasks]);
-
-  return (
-    <div className="h-full">
-      {/* Desktop: Horizontal scroll with all columns visible */}
-      {/* Mobile: Horizontal swipe through columns */}
-      <div
-        className="
-          flex gap-4 pb-4
-          overflow-x-auto snap-x snap-mandatory
-          md:snap-none md:overflow-x-visible
-          scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent
-        "
-      >
-        {COLUMNS.map((column) => (
-          <KanbanColumn
-            key={column.id}
-            config={column}
-            tasks={tasksByStatus[column.id]}
-            onTaskClick={onTaskClick}
-          />
-        ))}
-      </div>
-
-      {/* Mobile indicator dots */}
-      <div className="flex justify-center gap-2 mt-2 md:hidden">
-        {COLUMNS.map((column) => (
-          <div
-            key={column.id}
-            className={`w-2 h-2 rounded-full ${column.headerBg.replace('100', '400')}`}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Export types for external use
-export type { ColumnConfig };

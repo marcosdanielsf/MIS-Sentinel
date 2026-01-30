@@ -24,11 +24,11 @@ interface Message {
 }
 
 const sentimentColors: Record<string, string> = {
-    positive: 'bg-green-100 text-green-800',
-    neutral: 'bg-blue-100 text-blue-800',
-    negative: 'bg-red-100 text-red-800',
-    urgent: 'bg-orange-100 text-orange-800',
-    mixed: 'bg-purple-100 text-purple-800',
+    positive: 'bg-accent-success/20 text-accent-success border border-accent-success/30',
+    neutral: 'bg-accent-primary/20 text-accent-primary border border-accent-primary/30',
+    negative: 'bg-accent-error/20 text-accent-error border border-accent-error/30',
+    urgent: 'bg-accent-warning/20 text-accent-warning border border-accent-warning/30',
+    mixed: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
 };
 
 const sentimentEmojis: Record<string, string> = {
@@ -160,10 +160,10 @@ export default function MessagesPage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-bg-primary">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                    <p className="mt-4 text-text-secondary">Carregando...</p>
                 </div>
             </div>
         );
@@ -177,15 +177,15 @@ export default function MessagesPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-bg-primary">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">💬 Mensagens Monitoradas</h1>
-                            <p className="mt-2 text-gray-600">
+                            <h1 className="text-3xl font-bold text-text-primary">💬 Mensagens Monitoradas</h1>
+                            <p className="mt-2 text-text-secondary">
                                 Histórico completo de mensagens analisadas pela AI
                             </p>
                         </div>
@@ -198,69 +198,69 @@ export default function MessagesPage() {
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-border-hover transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Total no Período</p>
-                                    <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
+                                    <p className="text-sm text-text-secondary">Total no Período</p>
+                                    <p className="text-3xl font-bold text-text-primary mt-1">{stats.total}</p>
                                 </div>
-                                <MessageSquare className="h-12 w-12 text-blue-500" />
+                                <MessageSquare className="h-12 w-12 text-accent-primary" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-border-hover transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Alta Urgência</p>
-                                    <p className="text-3xl font-bold text-orange-600 mt-1">{stats.highUrgency}</p>
+                                    <p className="text-sm text-text-secondary">Alta Urgência</p>
+                                    <p className="text-3xl font-bold text-accent-warning mt-1">{stats.highUrgency}</p>
                                 </div>
-                                <Zap className="h-12 w-12 text-orange-500" />
+                                <Zap className="h-12 w-12 text-accent-warning" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-border-hover transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Positivas</p>
-                                    <p className="text-3xl font-bold text-green-600 mt-1">{stats.positive}</p>
+                                    <p className="text-sm text-text-secondary">Positivas</p>
+                                    <p className="text-3xl font-bold text-accent-success mt-1">{stats.positive}</p>
                                 </div>
-                                <TrendingUp className="h-12 w-12 text-green-500" />
+                                <TrendingUp className="h-12 w-12 text-accent-success" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-6 rounded-lg shadow">
+                        <div className="bg-bg-secondary p-6 rounded-lg border border-border-default hover:border-border-hover transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-600">Urgentes</p>
-                                    <p className="text-3xl font-bold text-red-600 mt-1">{stats.urgent}</p>
+                                    <p className="text-sm text-text-secondary">Urgentes</p>
+                                    <p className="text-3xl font-bold text-accent-error mt-1">{stats.urgent}</p>
                                 </div>
-                                <Filter className="h-12 w-12 text-red-500" />
+                                <Filter className="h-12 w-12 text-accent-error" />
                             </div>
                         </div>
                     </div>
 
                     {/* Search and Filters */}
-                    <div className="bg-white p-6 rounded-lg shadow mb-6">
+                    <div className="bg-bg-secondary p-6 rounded-lg border border-border-default mb-6">
                         <div className="mb-4">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-text-muted" />
                                 <input
                                     type="text"
                                     placeholder="Buscar mensagens, remetentes ou tópicos..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full pl-10 pr-4 py-3 bg-bg-tertiary border border-border-default rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary transition-colors"
                                 />
                             </div>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Remetente</label>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">Remetente</label>
                                 <select
                                     value={filterSender}
                                     onChange={(e) => setFilterSender(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-4 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary transition-colors"
                                 >
                                     <option value="all">Todos</option>
                                     {uniqueSenders.map((sender) => (
@@ -272,11 +272,11 @@ export default function MessagesPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Grupo</label>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">Grupo</label>
                                 <select
                                     value={filterGroup}
                                     onChange={(e) => setFilterGroup(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-4 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary transition-colors"
                                 >
                                     <option value="all">Todos</option>
                                     {uniqueGroups.map((group) => (
@@ -288,11 +288,11 @@ export default function MessagesPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Sentimento</label>
+                                <label className="block text-sm font-medium text-text-secondary mb-2">Sentimento</label>
                                 <select
                                     value={filterSentiment}
                                     onChange={(e) => setFilterSentiment(e.target.value)}
-                                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-4 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-accent-primary transition-colors"
                                 >
                                     <option value="all">Todos</option>
                                     <option value="positive">Positivo</option>
@@ -304,7 +304,7 @@ export default function MessagesPage() {
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <label className="block text-sm font-medium text-text-secondary mb-2">
                                     Urgência Mín: {minUrgency}
                                 </label>
                                 <input
@@ -313,7 +313,7 @@ export default function MessagesPage() {
                                     max="10"
                                     value={minUrgency}
                                     onChange={(e) => setMinUrgency(Number(e.target.value))}
-                                    className="w-full"
+                                    className="w-full accent-accent-primary"
                                 />
                             </div>
                         </div>
@@ -322,19 +322,19 @@ export default function MessagesPage() {
                     {/* Messages List */}
                     <div className="space-y-4">
                         {loadingMessages ? (
-                            <div className="bg-white p-12 rounded-lg shadow text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando mensagens...</p>
+                            <div className="bg-bg-secondary p-12 rounded-lg border border-border-default text-center">
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                                <p className="mt-4 text-text-secondary">Carregando mensagens...</p>
                             </div>
                         ) : filteredMessages.length === 0 ? (
-                            <div className="bg-white p-12 rounded-lg shadow text-center">
-                                <MessageSquare className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                                <p className="text-gray-900 font-semibold text-lg">Nenhuma mensagem encontrada</p>
-                                <p className="text-gray-500 mt-2">Tente ajustar os filtros de busca ou o período</p>
+                            <div className="bg-bg-secondary p-12 rounded-lg border border-border-default text-center">
+                                <MessageSquare className="h-16 w-16 text-text-muted mx-auto mb-4" />
+                                <p className="text-text-primary font-semibold text-lg">Nenhuma mensagem encontrada</p>
+                                <p className="text-text-secondary mt-2">Tente ajustar os filtros de busca ou o período</p>
                             </div>
                         ) : (
                             <>
-                                <div className="mb-4 text-sm text-gray-600">
+                                <div className="mb-4 text-sm text-text-secondary">
                                     Mostrando {filteredMessages.length} de {messages.length} mensagens no período
                                 </div>
 
@@ -343,15 +343,15 @@ export default function MessagesPage() {
                                     const sentimentEmoji = message.sentiment ? (sentimentEmojis[message.sentiment] || '💬') : '💬';
 
                                     return (
-                                        <div key={message.id} className="bg-white rounded-lg shadow p-6 hover:shadow-md transition-shadow">
+                                        <div key={message.id} className="bg-bg-secondary rounded-lg border border-border-default p-6 hover:bg-bg-tertiary hover:border-border-hover transition-all duration-200">
                                             <div className="flex items-start justify-between mb-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-medium">
+                                                    <div className="w-10 h-10 rounded-full bg-accent-primary flex items-center justify-center text-white font-medium">
                                                         {(message.group_sender_name || message.sender_name).charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p className="font-semibold text-gray-900">{message.group_sender_name || message.sender_name}</p>
-                                                        <p className="text-sm text-gray-500">{message.group_name || message.sender_name}</p>
+                                                        <p className="font-semibold text-text-primary">{message.group_sender_name || message.sender_name}</p>
+                                                        <p className="text-sm text-text-muted">{message.group_name || message.sender_name}</p>
                                                     </div>
                                                 </div>
 
@@ -360,22 +360,22 @@ export default function MessagesPage() {
                                                         {sentimentEmoji} {message.sentiment || 'neutral'}
                                                     </span>
                                                     <div className="flex items-center gap-1">
-                                                        <Zap className={`h-4 w-4 ${(message.urgency_score || 0) >= 7 ? 'text-red-500' : 'text-gray-400'}`} />
-                                                        <span className={`text-sm font-semibold ${(message.urgency_score || 0) >= 7 ? 'text-red-600' : 'text-gray-600'}`}>
+                                                        <Zap className={`h-4 w-4 ${(message.urgency_score || 0) >= 7 ? 'text-accent-error' : 'text-text-muted'}`} />
+                                                        <span className={`text-sm font-semibold ${(message.urgency_score || 0) >= 7 ? 'text-accent-error' : 'text-text-secondary'}`}>
                                                             {message.urgency_score || 0}/10
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
 
-                                            <p className="text-gray-800 mb-3">{message.message_body}</p>
+                                            <p className="text-text-primary mb-3">{message.message_body}</p>
 
                                             {message.keywords && message.keywords.length > 0 && (
                                                 <div className="flex flex-wrap gap-2 mb-3">
                                                     {message.keywords.map((keyword, idx) => (
                                                         <span
                                                             key={idx}
-                                                            className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs"
+                                                            className="px-2 py-1 bg-bg-tertiary text-text-secondary rounded text-xs border border-border-default"
                                                         >
                                                             #{keyword}
                                                         </span>
@@ -385,16 +385,16 @@ export default function MessagesPage() {
 
                                             {message.category && (
                                                 <div className="mb-3">
-                                                    <span className="text-xs text-gray-500">Categoria: </span>
-                                                    <span className="text-xs font-semibold text-indigo-600">{message.category}</span>
+                                                    <span className="text-xs text-text-muted">Categoria: </span>
+                                                    <span className="text-xs font-semibold text-accent-primary">{message.category}</span>
                                                 </div>
                                             )}
 
-                                            <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                                                <p className="text-xs text-gray-500">
+                                            <div className="flex items-center justify-between pt-3 border-t border-border-default">
+                                                <p className="text-xs text-text-muted">
                                                     ⏰ {formatDate(message.created_at)}
                                                 </p>
-                                                <p className="text-xs text-gray-400">ID: {message.external_id || message.id.slice(0, 8)}</p>
+                                                <p className="text-xs text-text-muted">ID: {message.external_id || message.id.slice(0, 8)}</p>
                                             </div>
                                         </div>
                                     );

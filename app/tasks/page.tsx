@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import Sidebar from '@/components/Sidebar';
 import { PageLoading } from '@/components/Layout';
-import { KanbanFilters } from './components';
+import { KanbanFilters, KanbanBoard } from './components';
 import { useTaskFilters, Task } from './hooks';
 import {
     CheckCircle,
@@ -15,10 +15,9 @@ import {
     RefreshCw,
     Plus,
     BarChart3,
-    XCircle,
     Timer,
-    Calendar,
-    TrendingUp,
+    LayoutGrid,
+    List,
 } from 'lucide-react';
 
 interface Project {
@@ -49,6 +48,7 @@ function TasksPageContent() {
     const [loadingTasks, setLoadingTasks] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
     // Use the new filter hook
     const {
@@ -184,6 +184,11 @@ function TasksPageContent() {
         }
     };
 
+    // Handler for KanbanBoard drag & drop
+    const handleTaskStatusChange = useCallback(async (taskId: string, newStatus: Task['status'], newPosition?: number) => {
+        await handleUpdateStatus(taskId, newStatus);
+    }, []);
+
     const handleCreateTask = async () => {
         if (!newTask.project_key || !newTask.title) {
             alert('Preencha projeto e título');
@@ -227,22 +232,6 @@ function TasksPageContent() {
         return <PageLoading />;
     }
 
-    const formatDate = (dateString: string) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit' });
-    };
-
-    const formatDateTime = (dateString: string | null) => {
-        if (!dateString) return '-';
-        const date = new Date(dateString);
-        return date.toLocaleString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
     const formatDuration = (minutes: number | null) => {
         if (!minutes) return '-';
         if (minutes < 60) return `${Math.round(minutes)}min`;
@@ -252,34 +241,6 @@ function TasksPageContent() {
         const days = Math.floor(hours / 24);
         const remainingHours = hours % 24;
         return `${days}d ${remainingHours}h`;
-    };
-
-    const getPriorityColor = (priority: string) => {
-        switch (priority) {
-            case 'urgent':
-                return 'bg-accent-error/20 text-accent-error border-accent-error/30';
-            case 'high':
-                return 'bg-accent-warning/20 text-accent-warning border-accent-warning/30';
-            case 'medium':
-                return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
-            default:
-                return 'bg-accent-primary/20 text-accent-primary border-accent-primary/30';
-        }
-    };
-
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'completed':
-                return <CheckCircle className="h-5 w-5 text-accent-success" />;
-            case 'in_progress':
-                return <PlayCircle className="h-5 w-5 text-accent-primary" />;
-            case 'blocked':
-                return <Pause className="h-5 w-5 text-accent-error" />;
-            case 'cancelled':
-                return <XCircle className="h-5 w-5 text-text-muted" />;
-            default:
-                return <Clock className="h-5 w-5 text-text-muted" />;
-        }
     };
 
     const getProjectName = (projectKey: string) => {
@@ -311,10 +272,35 @@ function TasksPageContent() {
                                 Gerenciador de Tarefas
                             </h1>
                             <p className="mt-2 text-text-secondary">
-                                Gestão de tarefas com métricas de tempo e performance
+                                Gestão de tarefas com Kanban e métricas de performance
                             </p>
                         </div>
                         <div className="flex gap-3">
+                            {/* View Toggle */}
+                            <div className="flex bg-bg-secondary rounded-lg border border-border-default p-1">
+                                <button
+                                    onClick={() => setViewMode('kanban')}
+                                    className={`px-3 py-1.5 rounded flex items-center gap-2 text-sm transition-colors ${
+                                        viewMode === 'kanban'
+                                            ? 'bg-accent-primary text-white'
+                                            : 'text-text-secondary hover:text-text-primary'
+                                    }`}
+                                >
+                                    <LayoutGrid className="h-4 w-4" />
+                                    Kanban
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('list')}
+                                    className={`px-3 py-1.5 rounded flex items-center gap-2 text-sm transition-colors ${
+                                        viewMode === 'list'
+                                            ? 'bg-accent-primary text-white'
+                                            : 'text-text-secondary hover:text-text-primary'
+                                    }`}
+                                >
+                                    <List className="h-4 w-4" />
+                                    Lista
+                                </button>
+                            </div>
                             <button
                                 onClick={handleRefresh}
                                 disabled={isRefreshing}
@@ -457,110 +443,76 @@ function TasksPageContent() {
                         </div>
                     )}
 
-                    {/* Tasks List */}
-                    <div className="bg-bg-secondary rounded-lg border border-border-default">
-                        <div className="p-6 border-b border-border-default">
-                            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
-                                <CheckCircle className="h-6 w-6 text-accent-primary" />
-                                Tarefas {filters.project !== 'all' ? `- ${getProjectName(filters.project)}` : ''}
-                            </h2>
+                    {/* Tasks View */}
+                    {loadingTasks ? (
+                        <div className="bg-bg-secondary rounded-lg border border-border-default p-12 text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent-primary border-t-transparent mx-auto"></div>
+                            <p className="mt-4 text-text-secondary">Carregando tarefas...</p>
                         </div>
-
-                        {loadingTasks ? (
-                            <div className="p-12 text-center">
-                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent-primary border-t-transparent mx-auto"></div>
-                                <p className="mt-4 text-text-secondary">Carregando tarefas...</p>
+                    ) : tasks.length === 0 ? (
+                        <div className="bg-bg-secondary rounded-lg border border-border-default p-12 text-center">
+                            <CheckCircle className="h-16 w-16 text-accent-success mx-auto mb-4" />
+                            <p className="text-text-primary font-semibold text-lg">Nenhuma tarefa encontrada</p>
+                            <p className="text-text-secondary mt-2">
+                                {hasActiveFilters
+                                    ? 'Nenhuma tarefa encontrada com os filtros atuais.'
+                                    : 'Não há tarefas ativas no momento.'}
+                            </p>
+                            <button
+                                onClick={() => setShowNewTaskForm(true)}
+                                className="mt-4 px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-blue-600 transition-colors"
+                            >
+                                Criar Nova Tarefa
+                            </button>
+                        </div>
+                    ) : viewMode === 'kanban' ? (
+                        /* Kanban Board View */
+                        <KanbanBoard
+                            tasks={tasks}
+                            onTaskStatusChange={handleTaskStatusChange}
+                            getProjectName={getProjectName}
+                            onAddTask={() => setShowNewTaskForm(true)}
+                        />
+                    ) : (
+                        /* List View - Fallback */
+                        <div className="bg-bg-secondary rounded-lg border border-border-default">
+                            <div className="p-6 border-b border-border-default">
+                                <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
+                                    <CheckCircle className="h-6 w-6 text-accent-primary" />
+                                    Tarefas {filters.project !== 'all' ? `- ${getProjectName(filters.project)}` : ''}
+                                </h2>
                             </div>
-                        ) : tasks.length === 0 ? (
-                            <div className="p-12 text-center">
-                                <CheckCircle className="h-16 w-16 text-accent-success mx-auto mb-4" />
-                                <p className="text-text-primary font-semibold text-lg">Nenhuma tarefa encontrada</p>
-                                <p className="text-text-secondary mt-2">
-                                    {hasActiveFilters
-                                        ? 'Nenhuma tarefa encontrada com os filtros atuais.'
-                                        : 'Não há tarefas ativas no momento.'}
-                                </p>
-                                <button
-                                    onClick={() => setShowNewTaskForm(true)}
-                                    className="mt-4 px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-blue-600 transition-colors"
-                                >
-                                    Criar Nova Tarefa
-                                </button>
-                            </div>
-                        ) : (
                             <div className="divide-y divide-border-default">
                                 {tasks.map((task) => (
                                     <div key={task.id} className="p-4 hover:bg-bg-tertiary transition-colors">
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-start gap-4 flex-1">
-                                                <div className="mt-1">
-                                                    {getStatusIcon(task.status)}
-                                                </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <h3 className="font-semibold text-text-primary">{task.title}</h3>
-                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(task.priority)}`}>
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                                            task.priority === 'urgent' ? 'bg-accent-error/20 text-accent-error' :
+                                                            task.priority === 'high' ? 'bg-accent-warning/20 text-accent-warning' :
+                                                            task.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                                                            'bg-accent-primary/20 text-accent-primary'
+                                                        }`}>
                                                             {task.priority}
+                                                        </span>
+                                                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                                            task.status === 'completed' ? 'bg-accent-success/20 text-accent-success' :
+                                                            task.status === 'in_progress' ? 'bg-accent-primary/20 text-accent-primary' :
+                                                            task.status === 'blocked' ? 'bg-accent-error/20 text-accent-error' :
+                                                            'bg-bg-tertiary text-text-secondary'
+                                                        }`}>
+                                                            {task.status}
                                                         </span>
                                                     </div>
                                                     {task.description && (
                                                         <p className="text-sm text-text-secondary mb-2">{task.description}</p>
                                                     )}
-
-                                                    {/* Time Metrics Row */}
-                                                    <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted mb-2">
-                                                        <span className="bg-bg-tertiary px-2 py-1 rounded">
-                                                            {getProjectName(task.project_key)}
-                                                        </span>
-                                                        <span className="flex items-center gap-1">
-                                                            <Calendar className="h-3 w-3" />
-                                                            Criada: {formatDate(task.created_at)}
-                                                        </span>
-                                                        {task.started_at && (
-                                                            <span className="flex items-center gap-1 text-accent-primary">
-                                                                <PlayCircle className="h-3 w-3" />
-                                                                Início: {formatDateTime(task.started_at)}
-                                                            </span>
-                                                        )}
-                                                        {task.completed_at && (
-                                                            <span className="flex items-center gap-1 text-accent-success">
-                                                                <CheckCircle className="h-3 w-3" />
-                                                                Fim: {formatDateTime(task.completed_at)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Duration Metrics */}
-                                                    <div className="flex flex-wrap items-center gap-3 text-xs">
-                                                        {task.time_to_complete_minutes && (
-                                                            <span className="flex items-center gap-1 bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
-                                                                <Timer className="h-3 w-3" />
-                                                                Duração: {formatDuration(task.time_to_complete_minutes)}
-                                                            </span>
-                                                        )}
-                                                        {task.estimated_hours && (
-                                                            <span className="flex items-center gap-1 bg-accent-primary/20 text-accent-primary px-2 py-1 rounded">
-                                                                <TrendingUp className="h-3 w-3" />
-                                                                Estimado: {task.estimated_hours}h
-                                                            </span>
-                                                        )}
-                                                        {task.actual_hours && (
-                                                            <span className="flex items-center gap-1 bg-accent-success/20 text-accent-success px-2 py-1 rounded">
-                                                                <CheckCircle className="h-3 w-3" />
-                                                                Real: {task.actual_hours}h
-                                                            </span>
-                                                        )}
-                                                        {task.due_date && (
-                                                            <span className={`flex items-center gap-1 px-2 py-1 rounded ${
-                                                                new Date(task.due_date) < new Date()
-                                                                    ? 'bg-accent-error/20 text-accent-error'
-                                                                    : 'bg-accent-warning/20 text-accent-warning'
-                                                            }`}>
-                                                                <Calendar className="h-3 w-3" />
-                                                                Prazo: {formatDate(task.due_date)}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                    <span className="text-xs bg-bg-tertiary text-text-muted px-2 py-1 rounded">
+                                                        {getProjectName(task.project_key)}
+                                                    </span>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-2 ml-4">
@@ -601,8 +553,8 @@ function TasksPageContent() {
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* New Task Modal */}
                     {showNewTaskForm && (

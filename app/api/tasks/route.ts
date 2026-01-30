@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { dispatchTaskEvent, isDueSoon, isOverdue, type TaskEvent, type TaskEventType } from './webhook/route';
+import { dispatchTaskEvent, isDueSoon, isOverdue, type TaskEvent, type TaskEventType } from '@/lib/task-events';
 
 // Create Supabase client for server-side
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;

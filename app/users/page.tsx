@@ -17,16 +17,16 @@ interface User {
 }
 
 const roleColors: Record<string, string> = {
-    'admin': 'bg-purple-100 text-purple-800',
-    'manager': 'bg-blue-100 text-blue-800',
-    'analyst': 'bg-green-100 text-green-800',
-    'viewer': 'bg-gray-100 text-gray-800',
+    'admin': 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+    'manager': 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    'analyst': 'bg-green-500/20 text-green-400 border border-green-500/30',
+    'viewer': 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
 };
 
 const statusColors: Record<string, { bg: string; icon: any }> = {
-    'active': { bg: 'bg-green-100 text-green-800', icon: CheckCircle },
-    'inactive': { bg: 'bg-red-100 text-red-800', icon: XCircle },
-    'pending': { bg: 'bg-yellow-100 text-yellow-800', icon: Clock },
+    'active': { bg: 'bg-green-500/20 text-green-400 border border-green-500/30', icon: CheckCircle },
+    'inactive': { bg: 'bg-red-500/20 text-red-400 border border-red-500/30', icon: XCircle },
+    'pending': { bg: 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30', icon: Clock },
 };
 
 export default function UsersPage() {
@@ -78,22 +78,22 @@ export default function UsersPage() {
 
     if (authLoading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+            <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500"></div>
             </div>
         );
     }
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-[#0a0a0a]">
             <Sidebar />
             <div className="flex-1 overflow-auto">
                 <div className="p-6 max-w-7xl mx-auto">
                     {/* Header */}
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                <Users className="h-7 w-7 text-purple-600" />
+                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <Users className="h-7 w-7 text-purple-500" />
                                 Gerenciamento de Usuários
                             </h1>
                             <p className="text-gray-500 mt-1">
@@ -108,41 +108,41 @@ export default function UsersPage() {
 
                     {/* Stats Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
                             <div className="text-sm text-gray-500">Total de Usuários</div>
-                            <div className="text-2xl font-bold text-gray-900">{stats.total}</div>
+                            <div className="text-2xl font-bold text-white">{stats.total}</div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
                             <div className="text-sm text-gray-500">Usuários Ativos</div>
-                            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+                            <div className="text-2xl font-bold text-green-400">{stats.active}</div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
                             <div className="text-sm text-gray-500">Pendentes</div>
-                            <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                            <div className="text-2xl font-bold text-yellow-400">{stats.pending}</div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-gray-900 rounded-lg border border-gray-800 p-4">
                             <div className="text-sm text-gray-500">Administradores</div>
-                            <div className="text-2xl font-bold text-purple-600">{stats.admins}</div>
+                            <div className="text-2xl font-bold text-purple-400">{stats.admins}</div>
                         </div>
                     </div>
 
                     {/* Filters */}
-                    <div className="bg-white rounded-lg shadow p-4 mb-6">
+                    <div className="bg-gray-900 rounded-lg border border-gray-800 p-4 mb-6">
                         <div className="flex flex-col md:flex-row gap-4">
                             <div className="flex-1 relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <input
                                     type="text"
                                     placeholder="Buscar por nome ou email..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                    className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                                 />
                             </div>
                             <select
                                 value={roleFilter}
                                 onChange={(e) => setRoleFilter(e.target.value)}
-                                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                className="px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                             >
                                 <option value="all">Todos os Cargos</option>
                                 <option value="admin">Administrador</option>
@@ -154,22 +154,22 @@ export default function UsersPage() {
                     </div>
 
                     {/* Users Table */}
-                    <div className="bg-white rounded-lg shadow overflow-hidden">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                    <div className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+                        <table className="min-w-full divide-y divide-gray-800">
+                            <thead className="bg-gray-800/50">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuário</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cargo</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Último Acesso</th>
-                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Usuário</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Cargo</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Último Acesso</th>
+                                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
+                            <tbody className="divide-y divide-gray-800">
                                 {loading ? (
                                     <tr>
                                         <td colSpan={5} className="px-6 py-12 text-center">
-                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto"></div>
                                         </td>
                                     </tr>
                                 ) : filteredUsers.length === 0 ? (
@@ -182,14 +182,14 @@ export default function UsersPage() {
                                     filteredUsers.map((u) => {
                                         const StatusIcon = statusColors[u.status].icon;
                                         return (
-                                            <tr key={u.id} className="hover:bg-gray-50">
+                                            <tr key={u.id} className="hover:bg-gray-800/50 transition-colors">
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex items-center">
-                                                        <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-medium">
+                                                        <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 font-medium border border-purple-500/30">
                                                             {u.username.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div className="ml-4">
-                                                            <div className="text-sm font-medium text-gray-900">{u.username}</div>
+                                                            <div className="text-sm font-medium text-white">{u.username}</div>
                                                             <div className="text-sm text-gray-500 flex items-center gap-1">
                                                                 <Mail className="h-3 w-3" />
                                                                 {u.email}
@@ -212,15 +212,15 @@ export default function UsersPage() {
                                                             u.status === 'inactive' ? 'Inativo' : 'Pendente'}
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-400">
                                                     {u.last_login ? new Date(u.last_login).toLocaleDateString('pt-BR') : 'Nunca'}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                     <div className="flex items-center justify-end gap-2">
-                                                        <button className="p-1 text-gray-400 hover:text-blue-600 transition-colors">
+                                                        <button className="p-1 text-gray-500 hover:text-blue-400 transition-colors">
                                                             <Edit className="h-4 w-4" />
                                                         </button>
-                                                        <button className="p-1 text-gray-400 hover:text-red-600 transition-colors">
+                                                        <button className="p-1 text-gray-500 hover:text-red-400 transition-colors">
                                                             <Trash2 className="h-4 w-4" />
                                                         </button>
                                                     </div>
@@ -234,36 +234,36 @@ export default function UsersPage() {
                     </div>
 
                     {/* Permissions Info */}
-                    <div className="mt-6 bg-white rounded-lg shadow p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Níveis de Permissão</h3>
+                    <div className="mt-6 bg-gray-900 rounded-lg border border-gray-800 p-6">
+                        <h3 className="text-lg font-semibold text-white mb-4">Níveis de Permissão</h3>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                            <div className="p-4 bg-purple-50 rounded-lg">
+                            <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-5 w-5 text-purple-600" />
-                                    <span className="font-medium text-purple-900">Administrador</span>
+                                    <Shield className="h-5 w-5 text-purple-400" />
+                                    <span className="font-medium text-purple-300">Administrador</span>
                                 </div>
-                                <p className="text-sm text-purple-700">Acesso total ao sistema, gerenciamento de usuários e configurações</p>
+                                <p className="text-sm text-purple-400/70">Acesso total ao sistema, gerenciamento de usuários e configurações</p>
                             </div>
-                            <div className="p-4 bg-blue-50 rounded-lg">
+                            <div className="p-4 bg-blue-500/10 rounded-lg border border-blue-500/30">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-5 w-5 text-blue-600" />
-                                    <span className="font-medium text-blue-900">Gerente</span>
+                                    <Shield className="h-5 w-5 text-blue-400" />
+                                    <span className="font-medium text-blue-300">Gerente</span>
                                 </div>
-                                <p className="text-sm text-blue-700">Acesso a relatórios, equipe e configurações básicas</p>
+                                <p className="text-sm text-blue-400/70">Acesso a relatórios, equipe e configurações básicas</p>
                             </div>
-                            <div className="p-4 bg-green-50 rounded-lg">
+                            <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/30">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-5 w-5 text-green-600" />
-                                    <span className="font-medium text-green-900">Analista</span>
+                                    <Shield className="h-5 w-5 text-green-400" />
+                                    <span className="font-medium text-green-300">Analista</span>
                                 </div>
-                                <p className="text-sm text-green-700">Visualização e edição de dados, sem acesso a configurações</p>
+                                <p className="text-sm text-green-400/70">Visualização e edição de dados, sem acesso a configurações</p>
                             </div>
-                            <div className="p-4 bg-gray-50 rounded-lg">
+                            <div className="p-4 bg-gray-500/10 rounded-lg border border-gray-600">
                                 <div className="flex items-center gap-2 mb-2">
-                                    <Shield className="h-5 w-5 text-gray-600" />
-                                    <span className="font-medium text-gray-900">Visualizador</span>
+                                    <Shield className="h-5 w-5 text-gray-400" />
+                                    <span className="font-medium text-gray-300">Visualizador</span>
                                 </div>
-                                <p className="text-sm text-gray-700">Apenas visualização de dashboards e relatórios</p>
+                                <p className="text-sm text-gray-500">Apenas visualização de dashboards e relatórios</p>
                             </div>
                         </div>
                     </div>

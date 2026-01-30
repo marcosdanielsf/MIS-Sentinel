@@ -45,10 +45,10 @@ const categoryIcons: Record<string, React.ComponentType<{ className?: string }>>
 };
 
 const categoryColors: Record<string, string> = {
-    faq: 'bg-blue-100 text-blue-800',
-    solution: 'bg-green-100 text-green-800',
-    process: 'bg-purple-100 text-purple-800',
-    best_practice: 'bg-orange-100 text-orange-800',
+    faq: 'bg-blue-500/20 text-blue-400 border border-blue-500/30',
+    solution: 'bg-green-500/20 text-green-400 border border-green-500/30',
+    process: 'bg-purple-500/20 text-purple-400 border border-purple-500/30',
+    best_practice: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
 };
 
 const categoryLabels: Record<string, string> = {
@@ -197,10 +197,10 @@ export default function KnowledgePage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-[#0a0a0a]">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto"></div>
+                    <p className="mt-4 text-gray-400">Carregando...</p>
                 </div>
             </div>
         );
@@ -214,7 +214,7 @@ export default function KnowledgePage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-[#0a0a0a]">
             <Sidebar />
 
             <div className="flex-1 overflow-auto pt-14 lg:pt-0">
@@ -222,14 +222,14 @@ export default function KnowledgePage() {
                     {/* Header */}
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                         <div>
-                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900">📚 Knowledge Base</h1>
-                            <p className="mt-1 text-sm sm:text-base text-gray-600">
+                            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-white">📚 Knowledge Base</h1>
+                            <p className="mt-1 text-sm sm:text-base text-gray-400">
                                 FAQs, soluções e conhecimento documentado
                             </p>
                         </div>
                         <button
                             onClick={() => setShowAddForm(true)}
-                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto text-sm sm:text-base"
+                            className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 w-full sm:w-auto text-sm sm:text-base transition-colors"
                         >
                             <Plus className="h-5 w-5" />
                             Adicionar
@@ -238,65 +238,65 @@ export default function KnowledgePage() {
 
                     {/* Stats - Grid 2x2 em mobile */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-6">
-                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
+                        <div className="bg-gray-900 p-3 sm:p-4 lg:p-6 rounded-lg border border-gray-800">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs sm:text-sm text-gray-600">Total</p>
-                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mt-0.5">{stats.total}</p>
+                                    <p className="text-xs sm:text-sm text-gray-400">Total</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white mt-0.5">{stats.total}</p>
                                 </div>
-                                <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-indigo-500" />
+                                <BookOpen className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-indigo-400" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
+                        <div className="bg-gray-900 p-3 sm:p-4 lg:p-6 rounded-lg border border-gray-800">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs sm:text-sm text-gray-600">FAQs</p>
-                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-600 mt-0.5">{stats.faqs}</p>
+                                    <p className="text-xs sm:text-sm text-gray-400">FAQs</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-blue-400 mt-0.5">{stats.faqs}</p>
                                 </div>
-                                <HelpCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-blue-500" />
+                                <HelpCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-blue-400" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
+                        <div className="bg-gray-900 p-3 sm:p-4 lg:p-6 rounded-lg border border-gray-800">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs sm:text-sm text-gray-600">Soluções</p>
-                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600 mt-0.5">{stats.solutions}</p>
+                                    <p className="text-xs sm:text-sm text-gray-400">Soluções</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-400 mt-0.5">{stats.solutions}</p>
                                 </div>
-                                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-green-500" />
+                                <CheckCircle className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-green-400" />
                             </div>
                         </div>
 
-                        <div className="bg-white p-3 sm:p-4 lg:p-6 rounded-lg shadow">
+                        <div className="bg-gray-900 p-3 sm:p-4 lg:p-6 rounded-lg border border-gray-800">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs sm:text-sm text-gray-600">Processos</p>
-                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-600 mt-0.5">{stats.processes}</p>
+                                    <p className="text-xs sm:text-sm text-gray-400">Processos</p>
+                                    <p className="text-xl sm:text-2xl lg:text-3xl font-bold text-purple-400 mt-0.5">{stats.processes}</p>
                                 </div>
-                                <FileText className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-purple-500" />
+                                <FileText className="h-8 w-8 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-purple-400" />
                             </div>
                         </div>
                     </div>
 
                     {/* Search and Filters */}
-                    <div className="bg-white p-4 sm:p-6 rounded-lg shadow mb-4 sm:mb-6">
+                    <div className="bg-gray-900 p-4 sm:p-6 rounded-lg border border-gray-800 mb-4 sm:mb-6">
                         <div className="flex flex-col gap-3 sm:gap-4">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-500" />
                                 <input
                                     type="text"
                                     placeholder="Buscar..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                                    className="w-full pl-10 pr-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                                 />
                             </div>
 
                             <select
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
-                                className="w-full sm:w-auto px-4 py-2.5 sm:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
+                                className="w-full sm:w-auto px-4 py-2.5 sm:py-3 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base"
                             >
                                 <option value="all">Todas Categorias</option>
                                 <option value="faq">FAQs</option>
@@ -309,17 +309,17 @@ export default function KnowledgePage() {
 
                     {/* Add Form Modal */}
                     {showAddForm && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-                            <div className="bg-white rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
-                                <h2 className="text-lg sm:text-xl font-semibold mb-4">Adicionar ao Knowledge Base</h2>
+                        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+                            <div className="bg-gray-900 border border-gray-800 rounded-lg p-4 sm:p-6 w-full max-w-2xl max-h-[85vh] overflow-y-auto">
+                                <h2 className="text-lg sm:text-xl font-semibold text-white mb-4">Adicionar ao Knowledge Base</h2>
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">Categoria</label>
                                         <select
                                             value={newEntry.category}
                                             onChange={(e) => setNewEntry({ ...newEntry, category: e.target.value })}
-                                            className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                            className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white text-sm sm:text-base"
                                         >
                                             <option value="faq">FAQ</option>
                                             <option value="solution">Solução</option>
@@ -331,21 +331,21 @@ export default function KnowledgePage() {
                                     {newEntry.category === 'faq' ? (
                                         <>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Pergunta</label>
+                                                <label className="block text-sm font-medium text-gray-400 mb-1">Pergunta</label>
                                                 <input
                                                     type="text"
                                                     value={newEntry.question}
                                                     onChange={(e) => setNewEntry({ ...newEntry, question: e.target.value })}
-                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                                    className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm sm:text-base"
                                                     placeholder="Ex: Como faço para..."
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Resposta</label>
+                                                <label className="block text-sm font-medium text-gray-400 mb-1">Resposta</label>
                                                 <textarea
                                                     value={newEntry.answer}
                                                     onChange={(e) => setNewEntry({ ...newEntry, answer: e.target.value })}
-                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                                    className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm sm:text-base"
                                                     rows={4}
                                                     placeholder="A resposta detalhada..."
                                                 />
@@ -354,21 +354,21 @@ export default function KnowledgePage() {
                                     ) : (
                                         <>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                                                <label className="block text-sm font-medium text-gray-400 mb-1">Título</label>
                                                 <input
                                                     type="text"
                                                     value={newEntry.title}
                                                     onChange={(e) => setNewEntry({ ...newEntry, title: e.target.value })}
-                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                                    className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm sm:text-base"
                                                     placeholder="Título do documento"
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">Conteúdo</label>
+                                                <label className="block text-sm font-medium text-gray-400 mb-1">Conteúdo</label>
                                                 <textarea
                                                     value={newEntry.content}
                                                     onChange={(e) => setNewEntry({ ...newEntry, content: e.target.value })}
-                                                    className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                                    className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm sm:text-base"
                                                     rows={6}
                                                     placeholder="O conteúdo completo..."
                                                 />
@@ -377,12 +377,12 @@ export default function KnowledgePage() {
                                     )}
 
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Tags (separadas por vírgula)</label>
+                                        <label className="block text-sm font-medium text-gray-400 mb-1">Tags (separadas por vírgula)</label>
                                         <input
                                             type="text"
                                             value={newEntry.tags}
                                             onChange={(e) => setNewEntry({ ...newEntry, tags: e.target.value })}
-                                            className="w-full px-3 sm:px-4 py-2.5 border border-gray-300 rounded-lg text-sm sm:text-base"
+                                            className="w-full px-3 sm:px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 text-sm sm:text-base"
                                             placeholder="vendas, cliente, processo"
                                         />
                                     </div>
@@ -391,13 +391,13 @@ export default function KnowledgePage() {
                                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 mt-6">
                                     <button
                                         onClick={() => setShowAddForm(false)}
-                                        className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
+                                        className="w-full sm:w-auto px-4 py-2.5 border border-gray-700 text-gray-300 rounded-lg hover:bg-gray-800 text-sm sm:text-base transition-colors"
                                     >
                                         Cancelar
                                     </button>
                                     <button
                                         onClick={handleAddEntry}
-                                        className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm sm:text-base"
+                                        className="w-full sm:w-auto px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm sm:text-base transition-colors"
                                     >
                                         Salvar
                                     </button>
@@ -409,14 +409,14 @@ export default function KnowledgePage() {
                     {/* Knowledge List */}
                     <div className="space-y-3 sm:space-y-4">
                         {loadingData ? (
-                            <div className="bg-white p-8 sm:p-12 rounded-lg shadow text-center">
-                                <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-sm sm:text-base text-gray-600">Carregando knowledge base...</p>
+                            <div className="bg-gray-900 p-8 sm:p-12 rounded-lg border border-gray-800 text-center">
+                                <div className="animate-spin rounded-full h-10 w-10 sm:h-12 sm:w-12 border-b-2 border-indigo-500 mx-auto"></div>
+                                <p className="mt-4 text-sm sm:text-base text-gray-400">Carregando knowledge base...</p>
                             </div>
                         ) : filteredEntries.length === 0 ? (
-                            <div className="bg-white p-8 sm:p-12 rounded-lg shadow text-center">
-                                <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-                                <p className="text-gray-900 font-semibold text-base sm:text-lg">Nenhuma entrada encontrada</p>
+                            <div className="bg-gray-900 p-8 sm:p-12 rounded-lg border border-gray-800 text-center">
+                                <BookOpen className="h-12 w-12 sm:h-16 sm:w-16 text-gray-600 mx-auto mb-4" />
+                                <p className="text-white font-semibold text-base sm:text-lg">Nenhuma entrada encontrada</p>
                                 <p className="text-gray-500 mt-2 text-sm sm:text-base">
                                     {searchTerm || filterCategory !== 'all'
                                         ? 'Tente ajustar sua busca ou filtros'
@@ -429,14 +429,14 @@ export default function KnowledgePage() {
                                 const isExpanded = expandedEntries.has(entry.id);
 
                                 return (
-                                    <div key={entry.id} className="bg-white rounded-lg shadow overflow-hidden">
+                                    <div key={entry.id} className="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
                                         <div
-                                            className="p-4 sm:p-6 cursor-pointer hover:bg-gray-50"
+                                            className="p-4 sm:p-6 cursor-pointer hover:bg-gray-800/50 transition-colors"
                                             onClick={() => toggleExpand(entry.id)}
                                         >
                                             <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
                                                 {/* Icon - hidden on very small screens */}
-                                                <div className={`hidden sm:flex p-2 sm:p-3 rounded-lg ${categoryColors[entry.category] || 'bg-gray-100'}`}>
+                                                <div className={`hidden sm:flex p-2 sm:p-3 rounded-lg ${categoryColors[entry.category] || 'bg-gray-800'}`}>
                                                     <Icon className="h-5 w-5 sm:h-6 sm:w-6" />
                                                 </div>
 
@@ -447,26 +447,26 @@ export default function KnowledgePage() {
                                                             {categoryLabels[entry.category] || entry.category}
                                                         </span>
                                                         {entry.tags?.slice(0, 2).map((tag, idx) => (
-                                                            <span key={idx} className="hidden sm:flex px-2 py-0.5 sm:py-1 bg-gray-100 text-gray-600 rounded-full text-xs items-center gap-1">
+                                                            <span key={idx} className="hidden sm:flex px-2 py-0.5 sm:py-1 bg-gray-800 text-gray-400 rounded-full text-xs items-center gap-1 border border-gray-700">
                                                                 <Tag className="h-3 w-3" />
                                                                 {tag}
                                                             </span>
                                                         ))}
                                                     </div>
 
-                                                    <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 line-clamp-2">
+                                                    <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-white line-clamp-2">
                                                         {entry.question || entry.title}
                                                     </h3>
 
                                                     {!isExpanded && (
-                                                        <p className="text-gray-600 mt-1.5 sm:mt-2 line-clamp-2 text-xs sm:text-sm">
+                                                        <p className="text-gray-400 mt-1.5 sm:mt-2 line-clamp-2 text-xs sm:text-sm">
                                                             {formatText(entry.answer || entry.content)}
                                                         </p>
                                                     )}
                                                 </div>
 
                                                 {/* Stats and chevron */}
-                                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 pt-2 sm:pt-0 border-t sm:border-0">
+                                                <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 text-xs sm:text-sm text-gray-500 pt-2 sm:pt-0 border-t border-gray-800 sm:border-0">
                                                     <div className="flex items-center gap-3 sm:gap-4">
                                                         <span className="flex items-center gap-1">
                                                             <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -477,20 +477,20 @@ export default function KnowledgePage() {
                                                             {entry.helpful_votes || 0}
                                                         </span>
                                                     </div>
-                                                    {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                                    {isExpanded ? <ChevronUp className="h-5 w-5 text-gray-400" /> : <ChevronDown className="h-5 w-5 text-gray-400" />}
                                                 </div>
                                             </div>
                                         </div>
 
                                         {isExpanded && (
-                                            <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t">
+                                            <div className="px-4 sm:px-6 pb-4 sm:pb-6 border-t border-gray-800">
                                                 <div className="mt-3 sm:mt-4 prose max-w-none">
-                                                    <div className="bg-gray-50 p-3 sm:p-4 rounded-lg whitespace-pre-wrap text-sm sm:text-base text-gray-800">
+                                                    <div className="bg-gray-800 p-3 sm:p-4 rounded-lg whitespace-pre-wrap text-sm sm:text-base text-gray-300">
                                                         {formatText(entry.answer || entry.content)}
                                                     </div>
                                                 </div>
 
-                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t">
+                                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-800">
                                                     <div className="text-xs sm:text-sm text-gray-500">
                                                         {entry.created_by && `Por ${entry.created_by} · `}
                                                         {new Date(entry.created_at).toLocaleDateString('pt-BR')}
@@ -500,7 +500,7 @@ export default function KnowledgePage() {
                                                             e.stopPropagation();
                                                             handleVote(entry.id);
                                                         }}
-                                                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg w-full sm:w-auto"
+                                                        className="flex items-center justify-center gap-2 px-4 py-2 text-sm text-indigo-400 hover:bg-indigo-500/10 rounded-lg w-full sm:w-auto transition-colors"
                                                     >
                                                         <ThumbsUp className="h-4 w-4" />
                                                         Foi útil

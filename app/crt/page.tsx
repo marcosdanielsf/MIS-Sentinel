@@ -181,10 +181,10 @@ export default function CRTPage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-bg-primary">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                    <p className="mt-4 text-text-secondary">Carregando...</p>
                 </div>
             </div>
         );
@@ -213,39 +213,39 @@ export default function CRTPage() {
     const getPriorityColor = (priority: string) => {
         switch (priority) {
             case 'critical':
-                return 'bg-red-100 text-red-800';
+                return 'bg-red-500/20 text-red-400 border border-red-500/30';
             case 'high':
-                return 'bg-orange-100 text-orange-800';
+                return 'bg-orange-500/20 text-orange-400 border border-orange-500/30';
             case 'medium':
-                return 'bg-yellow-100 text-yellow-800';
+                return 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30';
             default:
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
         }
     };
 
     const getStatusColor = (status: string) => {
         switch (status) {
             case 'resolved':
-                return 'bg-green-100 text-green-800';
+                return 'bg-accent-success/20 text-green-400 border border-green-500/30';
             case 'escalated':
-                return 'bg-red-100 text-red-800';
+                return 'bg-accent-error/20 text-red-400 border border-red-500/30';
             case 'in_progress':
-                return 'bg-blue-100 text-blue-800';
+                return 'bg-accent-primary/20 text-blue-400 border border-blue-500/30';
             default:
-                return 'bg-gray-100 text-gray-800';
+                return 'bg-bg-tertiary text-text-secondary border border-border-default';
         }
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-bg-primary">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">⏱️ Customer Resolution Time (CRT)</h1>
-                            <p className="mt-2 text-gray-600">
+                            <h1 className="text-3xl font-bold text-text-primary">⏱️ Customer Resolution Time (CRT)</h1>
+                            <p className="mt-2 text-text-secondary">
                                 Dashboard focado em resolver problemas, não apenas monitorá-los
                             </p>
                         </div>
@@ -255,199 +255,207 @@ export default function CRTPage() {
                     {loadingData ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando métricas...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                                <p className="mt-4 text-text-secondary">Carregando métricas...</p>
                             </div>
                         </div>
                     ) : (
                         <>
-                            {/* Key Metrics */}
+                            {/* Key Metrics - Dark Cards with Accent Colors */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg shadow text-white">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="text-sm font-semibold">Tempo Médio de Resposta</h4>
-                                        <Timer className="h-8 w-8 opacity-80" />
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-xl hover:border-blue-500/50 transition-all duration-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-medium text-text-secondary">Tempo Médio de Resposta</h4>
+                                        <div className="p-2 bg-blue-500/20 rounded-lg">
+                                            <Timer className="h-5 w-5 text-blue-400" />
+                                        </div>
                                     </div>
-                                    <p className="text-4xl font-bold">
+                                    <p className="text-3xl font-bold text-text-primary">
                                         {formatMinutes(stats.avgResponseTime)}
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
+                                    <p className="text-xs text-text-muted mt-1">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
                                         {stats.avgResponseTime < 60 || stats.avgResponseTime === 0 ? (
                                             <>
-                                                <ArrowDown className="h-4 w-4" />
-                                                <span className="text-sm">Meta: &lt;60min ✅</span>
+                                                <ArrowDown className="h-4 w-4 text-accent-success" />
+                                                <span className="text-xs text-accent-success">Meta: &lt;60min ✅</span>
                                             </>
                                         ) : (
                                             <>
-                                                <ArrowUp className="h-4 w-4" />
-                                                <span className="text-sm">Meta: &lt;60min ⚠️</span>
+                                                <ArrowUp className="h-4 w-4 text-accent-warning" />
+                                                <span className="text-xs text-accent-warning">Meta: &lt;60min ⚠️</span>
                                             </>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg shadow text-white">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="text-sm font-semibold">Tempo Médio de Resolução</h4>
-                                        <CheckCircle className="h-8 w-8 opacity-80" />
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-xl hover:border-green-500/50 transition-all duration-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-medium text-text-secondary">Tempo Médio de Resolução</h4>
+                                        <div className="p-2 bg-green-500/20 rounded-lg">
+                                            <CheckCircle className="h-5 w-5 text-green-400" />
+                                        </div>
                                     </div>
-                                    <p className="text-4xl font-bold">
+                                    <p className="text-3xl font-bold text-text-primary">
                                         {formatMinutes(stats.avgResolutionTime)}
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
+                                    <p className="text-xs text-text-muted mt-1">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
                                         {stats.avgResolutionTime < 240 || stats.avgResolutionTime === 0 ? (
                                             <>
-                                                <ArrowDown className="h-4 w-4" />
-                                                <span className="text-sm">Meta: &lt;4h ✅</span>
+                                                <ArrowDown className="h-4 w-4 text-accent-success" />
+                                                <span className="text-xs text-accent-success">Meta: &lt;4h ✅</span>
                                             </>
                                         ) : (
                                             <>
-                                                <ArrowUp className="h-4 w-4" />
-                                                <span className="text-sm">Meta: &lt;4h ⚠️</span>
+                                                <ArrowUp className="h-4 w-4 text-accent-warning" />
+                                                <span className="text-xs text-accent-warning">Meta: &lt;4h ⚠️</span>
                                             </>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg shadow text-white">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="text-sm font-semibold">Taxa de Resolução</h4>
-                                        <Target className="h-8 w-8 opacity-80" />
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-xl hover:border-purple-500/50 transition-all duration-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-medium text-text-secondary">Taxa de Resolução</h4>
+                                        <div className="p-2 bg-purple-500/20 rounded-lg">
+                                            <Target className="h-5 w-5 text-purple-400" />
+                                        </div>
                                     </div>
-                                    <p className="text-4xl font-bold">
+                                    <p className="text-3xl font-bold text-text-primary">
                                         {Math.round(stats.resolutionRate)}%
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
+                                    <p className="text-xs text-text-muted mt-1">{dateRange.label}</p>
                                     <div className="mt-4 flex items-center gap-2">
                                         {stats.resolutionRate >= 90 ? (
                                             <>
-                                                <TrendingUp className="h-4 w-4" />
-                                                <span className="text-sm">Meta: ≥90% ✅</span>
+                                                <TrendingUp className="h-4 w-4 text-accent-success" />
+                                                <span className="text-xs text-accent-success">Meta: ≥90% ✅</span>
                                             </>
                                         ) : (
                                             <>
-                                                <AlertTriangle className="h-4 w-4" />
-                                                <span className="text-sm">Meta: ≥90% ⚠️</span>
+                                                <AlertTriangle className="h-4 w-4 text-accent-warning" />
+                                                <span className="text-xs text-accent-warning">Meta: ≥90% ⚠️</span>
                                             </>
                                         )}
                                     </div>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6 rounded-lg shadow text-white">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <h4 className="text-sm font-semibold">Satisfação do Cliente</h4>
-                                        <Star className="h-8 w-8 opacity-80" />
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-xl hover:border-orange-500/50 transition-all duration-200">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-medium text-text-secondary">Satisfação do Cliente</h4>
+                                        <div className="p-2 bg-orange-500/20 rounded-lg">
+                                            <Star className="h-5 w-5 text-orange-400" />
+                                        </div>
                                     </div>
-                                    <p className="text-4xl font-bold">
+                                    <p className="text-3xl font-bold text-text-primary">
                                         {stats.avgSatisfaction.toFixed(1)}/5
                                     </p>
-                                    <p className="text-sm mt-2 opacity-90">{dateRange.label}</p>
-                                    <div className="mt-4 flex items-center gap-2">
+                                    <p className="text-xs text-text-muted mt-1">{dateRange.label}</p>
+                                    <div className="mt-4 flex items-center gap-2 text-orange-400">
                                         {'★'.repeat(Math.round(stats.avgSatisfaction))}
-                                        {'☆'.repeat(5 - Math.round(stats.avgSatisfaction))}
+                                        <span className="text-text-muted">{'☆'.repeat(5 - Math.round(stats.avgSatisfaction))}</span>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Period Performance */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                                <div className="bg-white p-6 rounded-lg shadow">
+                            {/* Period Performance - Compact Stats */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                                <div className="bg-bg-secondary border border-border-default p-5 rounded-xl hover:bg-bg-hover transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-gray-600">Issues no Período</p>
-                                            <p className="text-3xl font-bold text-gray-900 mt-1">
+                                            <p className="text-xs text-text-muted uppercase tracking-wider">Issues no Período</p>
+                                            <p className="text-2xl font-bold text-text-primary mt-1">
                                                 {stats.issuesInPeriod}
                                             </p>
                                         </div>
-                                        <AlertTriangle className="h-12 w-12 text-orange-500" />
+                                        <AlertTriangle className="h-10 w-10 text-orange-400/60" />
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-lg shadow">
+                                <div className="bg-bg-secondary border border-border-default p-5 rounded-xl hover:bg-bg-hover transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-gray-600">Resolvidos no Período</p>
-                                            <p className="text-3xl font-bold text-green-600 mt-1">
+                                            <p className="text-xs text-text-muted uppercase tracking-wider">Resolvidos no Período</p>
+                                            <p className="text-2xl font-bold text-accent-success mt-1">
                                                 {stats.resolvedInPeriod}
                                             </p>
                                         </div>
-                                        <CheckCircle className="h-12 w-12 text-green-500" />
+                                        <CheckCircle className="h-10 w-10 text-green-400/60" />
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-lg shadow">
+                                <div className="bg-bg-secondary border border-border-default p-5 rounded-xl hover:bg-bg-hover transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-gray-600">Atualmente Abertos</p>
-                                            <p className="text-3xl font-bold text-blue-600 mt-1">
+                                            <p className="text-xs text-text-muted uppercase tracking-wider">Atualmente Abertos</p>
+                                            <p className="text-2xl font-bold text-accent-primary mt-1">
                                                 {stats.currentlyOpen}
                                             </p>
                                         </div>
-                                        <Clock className="h-12 w-12 text-blue-500" />
+                                        <Clock className="h-10 w-10 text-blue-400/60" />
                                     </div>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-lg shadow">
+                                <div className="bg-bg-secondary border border-border-default p-5 rounded-xl hover:bg-bg-hover transition-colors">
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-sm text-gray-600">Escalados</p>
-                                            <p className="text-3xl font-bold text-red-600 mt-1">
+                                            <p className="text-xs text-text-muted uppercase tracking-wider">Escalados</p>
+                                            <p className="text-2xl font-bold text-accent-error mt-1">
                                                 {stats.currentlyEscalated}
                                             </p>
                                         </div>
-                                        <Zap className="h-12 w-12 text-red-500" />
+                                        <Zap className="h-10 w-10 text-red-400/60" />
                                     </div>
                                 </div>
                             </div>
 
                             {/* Top Issues and Goals */}
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                                <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-xl">
+                                    <h3 className="text-lg font-semibold text-text-primary mb-4">
                                         📊 Top Tipos de Problemas ({dateRange.label})
                                     </h3>
                                     {stats.topIssues.length > 0 ? (
                                         <div className="space-y-3">
                                             {stats.topIssues.map((issue, idx) => (
-                                                <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+                                                <div key={idx} className="flex items-center justify-between p-3 bg-bg-tertiary rounded-lg hover:bg-bg-hover transition-colors">
                                                     <div className="flex-1">
-                                                        <p className="font-semibold text-gray-900">{issue.category}</p>
-                                                        <p className="text-sm text-gray-600">
+                                                        <p className="font-medium text-text-primary">{issue.category}</p>
+                                                        <p className="text-sm text-text-muted">
                                                             {issue.count} ocorrências
                                                         </p>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-sm font-semibold text-orange-600">
+                                                        <span className="px-2 py-1 text-xs font-medium bg-orange-500/20 text-orange-400 rounded-md">
                                                             {issue.open} abertos
-                                                        </p>
+                                                        </span>
                                                     </div>
                                                 </div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <p className="text-gray-500 text-center py-8">Nenhum issue registrado no período</p>
+                                        <p className="text-text-muted text-center py-8">Nenhum issue registrado no período</p>
                                     )}
                                 </div>
 
-                                <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-xl">
+                                    <h3 className="text-lg font-semibold text-text-primary mb-4">
                                         🎯 Metas vs Realidade
                                     </h3>
-                                    <div className="space-y-4">
+                                    <div className="space-y-5">
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <span className="text-sm text-gray-600">Tempo de Resposta</span>
-                                                <span className="text-sm font-semibold">
+                                                <span className="text-sm text-text-secondary">Tempo de Resposta</span>
+                                                <span className="text-sm font-medium text-text-primary">
                                                     {formatMinutes(stats.avgResponseTime)} / 60min
                                                 </span>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div className="w-full bg-bg-tertiary rounded-full h-2">
                                                 <div
-                                                    className={`h-3 rounded-full ${stats.avgResponseTime <= 60 || stats.avgResponseTime === 0
-                                                        ? 'bg-green-500'
-                                                        : 'bg-red-500'
+                                                    className={`h-2 rounded-full transition-all duration-500 ${stats.avgResponseTime <= 60 || stats.avgResponseTime === 0
+                                                        ? 'bg-accent-success'
+                                                        : 'bg-accent-error'
                                                         }`}
                                                     style={{
                                                         width: `${Math.min((stats.avgResponseTime / 60) * 100, 100)}%`,
@@ -458,16 +466,16 @@ export default function CRTPage() {
 
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <span className="text-sm text-gray-600">Tempo de Resolução</span>
-                                                <span className="text-sm font-semibold">
+                                                <span className="text-sm text-text-secondary">Tempo de Resolução</span>
+                                                <span className="text-sm font-medium text-text-primary">
                                                     {formatMinutes(stats.avgResolutionTime)} / 4h
                                                 </span>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div className="w-full bg-bg-tertiary rounded-full h-2">
                                                 <div
-                                                    className={`h-3 rounded-full ${stats.avgResolutionTime <= 240 || stats.avgResolutionTime === 0
-                                                        ? 'bg-green-500'
-                                                        : 'bg-red-500'
+                                                    className={`h-2 rounded-full transition-all duration-500 ${stats.avgResolutionTime <= 240 || stats.avgResolutionTime === 0
+                                                        ? 'bg-accent-success'
+                                                        : 'bg-accent-error'
                                                         }`}
                                                     style={{
                                                         width: `${Math.min((stats.avgResolutionTime / 240) * 100, 100)}%`,
@@ -478,14 +486,14 @@ export default function CRTPage() {
 
                                         <div>
                                             <div className="flex justify-between mb-2">
-                                                <span className="text-sm text-gray-600">Taxa de Resolução</span>
-                                                <span className="text-sm font-semibold">
+                                                <span className="text-sm text-text-secondary">Taxa de Resolução</span>
+                                                <span className="text-sm font-medium text-text-primary">
                                                     {Math.round(stats.resolutionRate)}% / 90%
                                                 </span>
                                             </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-3">
+                                            <div className="w-full bg-bg-tertiary rounded-full h-2">
                                                 <div
-                                                    className={`h-3 rounded-full ${stats.resolutionRate >= 90 ? 'bg-green-500' : 'bg-orange-500'
+                                                    className={`h-2 rounded-full transition-all duration-500 ${stats.resolutionRate >= 90 ? 'bg-accent-success' : 'bg-accent-warning'
                                                         }`}
                                                     style={{
                                                         width: `${Math.min(stats.resolutionRate, 100)}%`,
@@ -497,73 +505,73 @@ export default function CRTPage() {
                                 </div>
                             </div>
 
-                            {/* Open Issues */}
-                            <div className="bg-white rounded-lg shadow">
+                            {/* Open Issues Table */}
+                            <div className="bg-bg-secondary border border-border-default rounded-xl">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">
+                                        <h3 className="text-lg font-semibold text-text-primary">
                                             🚨 Issues Abertos - Ação Necessária
                                         </h3>
                                         <Link
                                             href="/issues"
-                                            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                            className="text-sm text-accent-primary hover:text-blue-400 font-medium transition-colors"
                                         >
                                             Ver todos →
                                         </Link>
                                     </div>
 
                                     {openIssues.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                                            <p>Nenhum issue aberto!</p>
-                                            <p className="text-sm mt-1">Todos os problemas foram resolvidos 🎉</p>
+                                        <div className="text-center py-8">
+                                            <CheckCircle className="h-12 w-12 mx-auto mb-2 text-accent-success" />
+                                            <p className="text-text-primary">Nenhum issue aberto!</p>
+                                            <p className="text-sm text-text-muted mt-1">Todos os problemas foram resolvidos 🎉</p>
                                         </div>
                                     ) : (
-                                        <div className="space-y-4">
+                                        <div className="space-y-3">
                                             {openIssues.map((issue) => (
                                                 <div
                                                     key={issue.id}
-                                                    className="flex items-start gap-4 py-3 border-b last:border-b-0"
+                                                    className="flex items-start gap-4 p-4 bg-bg-tertiary rounded-lg hover:bg-bg-hover transition-colors border border-transparent hover:border-border-hover"
                                                 >
                                                     <div
                                                         className={`p-2 rounded-lg ${issue.priority === 'critical'
-                                                            ? 'bg-red-100'
+                                                            ? 'bg-red-500/20'
                                                             : issue.priority === 'high'
-                                                                ? 'bg-orange-100'
-                                                                : 'bg-yellow-100'
+                                                                ? 'bg-orange-500/20'
+                                                                : 'bg-yellow-500/20'
                                                             }`}
                                                     >
                                                         <AlertTriangle
                                                             className={`h-5 w-5 ${issue.priority === 'critical'
-                                                                ? 'text-red-600'
+                                                                ? 'text-red-400'
                                                                 : issue.priority === 'high'
-                                                                    ? 'text-orange-600'
-                                                                    : 'text-yellow-600'
+                                                                    ? 'text-orange-400'
+                                                                    : 'text-yellow-400'
                                                                 }`}
                                                         />
                                                     </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-semibold text-gray-900">{issue.issue_type}</p>
-                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getPriorityColor(issue.priority)}`}>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                                            <p className="font-medium text-text-primary">{issue.issue_type}</p>
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(issue.priority)}`}>
                                                                 {issue.priority}
                                                             </span>
-                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusColor(issue.status)}`}>
+                                                            <span className={`px-2 py-0.5 rounded text-xs font-medium ${getStatusColor(issue.status)}`}>
                                                                 {issue.status}
                                                             </span>
                                                         </div>
-                                                        <p className="text-sm text-gray-600">
+                                                        <p className="text-sm text-text-secondary">
                                                             Cliente: {issue.customer_name || 'N/A'}
                                                             {issue.assigned_to && ` • Atribuído: ${issue.assigned_to}`}
                                                         </p>
-                                                        <p className="text-xs text-gray-500 mt-1">
+                                                        <p className="text-xs text-text-muted mt-1">
                                                             Detectado: {formatDate(issue.detected_at)}
                                                             {issue.time_to_resolution && ` • Resolução: ${formatMinutes(issue.time_to_resolution)}`}
                                                         </p>
                                                     </div>
-                                                    <div className="text-right">
-                                                        <Clock className="h-5 w-5 text-gray-400 ml-auto" />
-                                                        <p className="text-xs text-gray-500 mt-1">
+                                                    <div className="text-right flex-shrink-0">
+                                                        <Clock className="h-5 w-5 text-text-muted ml-auto" />
+                                                        <p className="text-xs text-text-muted mt-1">
                                                             {formatDate(issue.detected_at)}
                                                         </p>
                                                     </div>

@@ -175,7 +175,6 @@ export default function KanbanBoard({
             }
         } else {
             // Same column reordering - update locally (position is optional)
-            // For now we just keep the new visual order
             const oldIndex = targetTasks.findIndex((t) => t.id === activeId);
             if (oldIndex !== -1 && oldIndex !== newPosition) {
                 const newTasks = [...localTasks];
@@ -197,8 +196,8 @@ export default function KanbanBoard({
     return (
         <div className={`relative ${isUpdating ? 'opacity-75' : ''}`}>
             {isUpdating && (
-                <div className="absolute top-2 right-2 z-10 px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm flex items-center gap-2">
-                    <div className="animate-spin h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full" />
+                <div className="absolute top-2 right-2 z-10 px-3 py-1 bg-accent-primary/20 text-accent-primary rounded-full text-sm flex items-center gap-2">
+                    <div className="animate-spin h-4 w-4 border-2 border-accent-primary border-t-transparent rounded-full" />
                     Atualizando...
                 </div>
             )}

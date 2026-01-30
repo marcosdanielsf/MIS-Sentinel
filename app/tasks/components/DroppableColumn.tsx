@@ -37,6 +37,7 @@ interface ColumnConfig {
     color: string;
     bgColor: string;
     borderColor: string;
+    iconColor: string;
     icon: React.ReactNode;
 }
 
@@ -53,37 +54,41 @@ export const COLUMNS: ColumnConfig[] = [
         id: 'pending',
         title: 'Pendentes',
         status: 'pending',
-        color: 'text-gray-700',
-        bgColor: 'bg-gray-50',
-        borderColor: 'border-gray-200',
-        icon: <Clock className="h-5 w-5 text-gray-500" />,
+        color: 'text-text-secondary',
+        bgColor: 'bg-bg-tertiary/50',
+        borderColor: 'border-border-default',
+        iconColor: 'text-text-muted',
+        icon: <Clock className="h-5 w-5" />,
     },
     {
         id: 'in_progress',
         title: 'Em Progresso',
         status: 'in_progress',
-        color: 'text-blue-700',
-        bgColor: 'bg-blue-50',
-        borderColor: 'border-blue-200',
-        icon: <PlayCircle className="h-5 w-5 text-blue-500" />,
+        color: 'text-accent-primary',
+        bgColor: 'bg-accent-primary/5',
+        borderColor: 'border-accent-primary/30',
+        iconColor: 'text-accent-primary',
+        icon: <PlayCircle className="h-5 w-5" />,
     },
     {
         id: 'blocked',
         title: 'Bloqueadas',
         status: 'blocked',
-        color: 'text-red-700',
-        bgColor: 'bg-red-50',
-        borderColor: 'border-red-200',
-        icon: <Pause className="h-5 w-5 text-red-500" />,
+        color: 'text-accent-error',
+        bgColor: 'bg-accent-error/5',
+        borderColor: 'border-accent-error/30',
+        iconColor: 'text-accent-error',
+        icon: <Pause className="h-5 w-5" />,
     },
     {
         id: 'completed',
         title: 'Concluídas',
         status: 'completed',
-        color: 'text-green-700',
-        bgColor: 'bg-green-50',
-        borderColor: 'border-green-200',
-        icon: <CheckCircle className="h-5 w-5 text-green-500" />,
+        color: 'text-accent-success',
+        bgColor: 'bg-accent-success/5',
+        borderColor: 'border-accent-success/30',
+        iconColor: 'text-accent-success',
+        icon: <CheckCircle className="h-5 w-5" />,
     },
 ];
 
@@ -109,20 +114,20 @@ export default function DroppableColumn({
             className={`
                 flex flex-col min-w-[300px] max-w-[350px] rounded-xl border-2 
                 ${column.borderColor} ${column.bgColor}
-                ${isOver ? 'ring-2 ring-indigo-400 ring-offset-2' : ''}
+                ${isOver ? 'ring-2 ring-accent-primary ring-offset-2 ring-offset-bg-primary' : ''}
                 transition-all duration-200
             `}
         >
             {/* Column Header */}
             <div className={`flex items-center justify-between p-4 border-b ${column.borderColor}`}>
                 <div className="flex items-center gap-2">
-                    {column.icon}
+                    <span className={column.iconColor}>{column.icon}</span>
                     <h3 className={`font-semibold ${column.color}`}>
                         {column.title}
                     </h3>
                     <span className={`
                         text-xs px-2 py-0.5 rounded-full font-medium
-                        ${column.bgColor} ${column.color} border ${column.borderColor}
+                        bg-bg-hover text-text-secondary border border-border-default
                     `}>
                         {tasks.length}
                     </span>
@@ -130,10 +135,10 @@ export default function DroppableColumn({
                 {column.status === 'pending' && onAddTask && (
                     <button
                         onClick={onAddTask}
-                        className="p-1 hover:bg-gray-200 rounded transition-colors"
+                        className="p-1 hover:bg-bg-hover rounded transition-colors"
                         title="Nova tarefa"
                     >
-                        <Plus className="h-4 w-4 text-gray-500" />
+                        <Plus className="h-4 w-4 text-text-muted" />
                     </button>
                 )}
             </div>
@@ -143,7 +148,7 @@ export default function DroppableColumn({
                 ref={setNodeRef}
                 className={`
                     flex-1 p-3 space-y-3 min-h-[200px] overflow-y-auto max-h-[calc(100vh-300px)]
-                    ${isOver ? 'bg-indigo-50/50' : ''}
+                    ${isOver ? 'bg-accent-primary/10' : ''}
                     transition-colors duration-200
                 `}
             >
@@ -166,10 +171,10 @@ export default function DroppableColumn({
                     <div className={`
                         flex flex-col items-center justify-center py-8 
                         border-2 border-dashed ${column.borderColor} rounded-lg
-                        ${isOver ? 'border-indigo-400 bg-indigo-50' : ''}
+                        ${isOver ? 'border-accent-primary bg-accent-primary/10' : ''}
                     `}>
-                        {column.icon}
-                        <p className="text-sm text-gray-500 mt-2">
+                        <span className={column.iconColor}>{column.icon}</span>
+                        <p className="text-sm text-text-muted mt-2">
                             {isOver ? 'Solte aqui' : 'Nenhuma tarefa'}
                         </p>
                     </div>
@@ -177,8 +182,8 @@ export default function DroppableColumn({
 
                 {/* Drop placeholder when dragging over */}
                 {isOver && tasks.length > 0 && (
-                    <div className="h-20 border-2 border-dashed border-indigo-400 rounded-lg bg-indigo-50/50 flex items-center justify-center">
-                        <p className="text-sm text-indigo-500">Solte aqui</p>
+                    <div className="h-20 border-2 border-dashed border-accent-primary rounded-lg bg-accent-primary/10 flex items-center justify-center">
+                        <p className="text-sm text-accent-primary">Solte aqui</p>
                     </div>
                 )}
             </div>

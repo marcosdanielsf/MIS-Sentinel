@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Calendar, ChevronDown } from 'lucide-react';
 
 export type DateRange = {
@@ -28,6 +28,18 @@ export default function DateFilter({ onDateChange, showMessagesPerMinute = false
     const [selectedLabel, setSelectedLabel] = useState('Últimos 7 dias');
     const [customStart, setCustomStart] = useState('');
     const [customEnd, setCustomEnd] = useState('');
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const handlePresetClick = (label: string, days: number) => {
         const endDate = new Date();
@@ -61,7 +73,7 @@ export default function DateFilter({ onDateChange, showMessagesPerMinute = false
         <div className="flex items-center gap-4">
             {/* Messages per minute indicator */}
             {showMessagesPerMinute && (
-                <div className="flex items-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-4 py-2 rounded-lg shadow">
+                <div className="flex items-center gap-2 bg-gradient-to-r from-cyan-600 to-accent-primary text-white px-4 py-2 rounded-lg">
                     <div className="flex items-center gap-1">
                         <span className="relative flex h-3 w-3">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
@@ -76,26 +88,28 @@ export default function DateFilter({ onDateChange, showMessagesPerMinute = false
             )}
 
             {/* Date filter dropdown */}
-            <div className="relative">
+            <div className="relative" ref={dropdownRef}>
                 <button
                     onClick={() => setIsOpen(!isOpen)}
-                    className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 shadow-sm"
+                    className="flex items-center gap-2 bg-bg-secondary border border-border-default rounded-lg px-4 py-2 text-sm font-medium text-text-primary hover:bg-bg-tertiary hover:border-border-hover transition-colors"
                 >
-                    <Calendar className="h-4 w-4 text-gray-500" />
+                    <Calendar className="h-4 w-4 text-text-muted" />
                     <span>{selectedLabel}</span>
-                    <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                    <ChevronDown className={`h-4 w-4 text-text-muted transition-transform ${isOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {isOpen && (
-                    <div className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="absolute right-0 mt-2 w-72 bg-bg-secondary rounded-lg shadow-lg border border-border-default z-50">
                         <div className="p-2">
-                            <p className="text-xs font-semibold text-gray-500 uppercase px-3 py-2">Períodos</p>
+                            <p className="text-xs font-semibold text-text-muted uppercase px-3 py-2">Períodos</p>
                             {presetRanges.map((range) => (
                                 <button
                                     key={range.label}
                                     onClick={() => handlePresetClick(range.label, range.days)}
-                                    className={`w-full text-left px-3 py-2 text-sm rounded-md hover:bg-gray-100 ${
-                                        selectedLabel === range.label ? 'bg-indigo-50 text-indigo-700 font-medium' : 'text-gray-700'
+                                    className={`w-full text-left px-3 py-2 text-sm rounded-md transition-colors ${
+                                        selectedLabel === range.label 
+                                            ? 'bg-accent-primary/20 text-accent-primary font-medium' 
+                                            : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                                     }`}
                                 >
                                     {range.label}
@@ -103,26 +117,26 @@ export default function DateFilter({ onDateChange, showMessagesPerMinute = false
                             ))}
                         </div>
 
-                        <div className="border-t border-gray-200 p-3">
-                            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Período personalizado</p>
+                        <div className="border-t border-border-default p-3">
+                            <p className="text-xs font-semibold text-text-muted uppercase mb-2">Período personalizado</p>
                             <div className="flex gap-2 mb-2">
                                 <input
                                     type="date"
                                     value={customStart}
                                     onChange={(e) => setCustomStart(e.target.value)}
-                                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                                    className="flex-1 px-2 py-1 text-sm bg-bg-tertiary border border-border-default rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                                 />
                                 <input
                                     type="date"
                                     value={customEnd}
                                     onChange={(e) => setCustomEnd(e.target.value)}
-                                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded"
+                                    className="flex-1 px-2 py-1 text-sm bg-bg-tertiary border border-border-default rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent-primary"
                                 />
                             </div>
                             <button
                                 onClick={handleCustomRange}
                                 disabled={!customStart || !customEnd}
-                                className="w-full px-3 py-1.5 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                className="w-full px-3 py-1.5 text-sm bg-accent-primary text-white rounded-md hover:bg-blue-600 disabled:bg-bg-hover disabled:text-text-muted disabled:cursor-not-allowed transition-colors"
                             >
                                 Aplicar
                             </button>

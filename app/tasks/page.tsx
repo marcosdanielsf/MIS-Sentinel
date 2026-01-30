@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import Sidebar from '@/components/Sidebar';
+import { PageLoading } from '@/components/Layout';
 import { KanbanFilters } from './components';
 import { useTaskFilters, Task } from './hooks';
 import {
@@ -101,14 +102,12 @@ function TasksPageContent() {
             setLoadingTasks(true);
             setError(null);
 
-            // Fetch ALL tasks - filtering is now done client-side
             const response = await fetch('/api/tasks?action=list_tasks');
             const result = await response.json();
 
             if (result.success && result.data) {
                 let fetchedTasks = result.data as Task[];
 
-                // Sort by priority
                 const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
                 fetchedTasks.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
 
@@ -225,14 +224,7 @@ function TasksPageContent() {
     };
 
     if (loading || !user) {
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
-                </div>
-            </div>
-        );
+        return <PageLoading />;
     }
 
     const formatDate = (dateString: string) => {
@@ -265,28 +257,28 @@ function TasksPageContent() {
     const getPriorityColor = (priority: string) => {
         switch (priority) {
             case 'urgent':
-                return 'bg-red-100 text-red-800 border-red-300';
+                return 'bg-accent-error/20 text-accent-error border-accent-error/30';
             case 'high':
-                return 'bg-orange-100 text-orange-800 border-orange-300';
+                return 'bg-accent-warning/20 text-accent-warning border-accent-warning/30';
             case 'medium':
-                return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+                return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30';
             default:
-                return 'bg-blue-100 text-blue-800 border-blue-300';
+                return 'bg-accent-primary/20 text-accent-primary border-accent-primary/30';
         }
     };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
             case 'completed':
-                return <CheckCircle className="h-5 w-5 text-green-600" />;
+                return <CheckCircle className="h-5 w-5 text-accent-success" />;
             case 'in_progress':
-                return <PlayCircle className="h-5 w-5 text-blue-600" />;
+                return <PlayCircle className="h-5 w-5 text-accent-primary" />;
             case 'blocked':
-                return <Pause className="h-5 w-5 text-red-600" />;
+                return <Pause className="h-5 w-5 text-accent-error" />;
             case 'cancelled':
-                return <XCircle className="h-5 w-5 text-gray-400" />;
+                return <XCircle className="h-5 w-5 text-text-muted" />;
             default:
-                return <Clock className="h-5 w-5 text-gray-400" />;
+                return <Clock className="h-5 w-5 text-text-muted" />;
         }
     };
 
@@ -300,26 +292,25 @@ function TasksPageContent() {
     const totalCompleted = projectSummaries.reduce((acc, p) => acc + (p.completed || 0), 0);
     const totalBlocked = projectSummaries.reduce((acc, p) => acc + (p.blocked || 0), 0);
 
-    // Calculate average completion time
     const completedWithTime = projectSummaries.filter(p => p.avg_completion_time_minutes);
     const avgCompletionTime = completedWithTime.length > 0
         ? completedWithTime.reduce((sum, p) => sum + (p.avg_completion_time_minutes || 0), 0) / completedWithTime.length
         : null;
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-bg-primary">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
-                <div className="p-8">
+                <div className="p-6 lg:p-8 pt-20 lg:pt-8">
                     {/* Header */}
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                                <CheckCircle className="h-8 w-8 text-indigo-600" />
+                            <h1 className="text-2xl font-bold text-text-primary flex items-center gap-3">
+                                <CheckCircle className="h-7 w-7 text-accent-primary" />
                                 Gerenciador de Tarefas
                             </h1>
-                            <p className="mt-2 text-gray-600">
+                            <p className="mt-2 text-text-secondary">
                                 Gestão de tarefas com métricas de tempo e performance
                             </p>
                         </div>
@@ -327,14 +318,14 @@ function TasksPageContent() {
                             <button
                                 onClick={handleRefresh}
                                 disabled={isRefreshing}
-                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 flex items-center gap-2"
+                                className="px-4 py-2 bg-bg-secondary text-text-secondary rounded-lg hover:bg-bg-tertiary hover:text-text-primary border border-border-default flex items-center gap-2 transition-colors"
                             >
                                 <RefreshCw className={`h-5 w-5 ${isRefreshing ? 'animate-spin' : ''}`} />
                                 Atualizar
                             </button>
                             <button
                                 onClick={() => setShowNewTaskForm(true)}
-                                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                                className="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-blue-600 flex items-center gap-2 transition-colors"
                             >
                                 <Plus className="h-5 w-5" />
                                 Nova Tarefa
@@ -344,47 +335,47 @@ function TasksPageContent() {
 
                     {/* Global Stats */}
                     <div className="grid grid-cols-5 gap-4 mb-8">
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-bg-secondary rounded-lg border border-border-default p-4 hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-500">Pendentes</p>
-                                    <p className="text-2xl font-bold text-gray-900">{totalPending}</p>
+                                    <p className="text-sm text-text-secondary">Pendentes</p>
+                                    <p className="text-2xl font-bold text-text-primary">{totalPending}</p>
                                 </div>
-                                <Clock className="h-8 w-8 text-gray-400" />
+                                <Clock className="h-8 w-8 text-text-muted" />
                             </div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-bg-secondary rounded-lg border border-accent-primary/30 p-4 hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-500">Em Progresso</p>
-                                    <p className="text-2xl font-bold text-blue-600">{totalInProgress}</p>
+                                    <p className="text-sm text-text-secondary">Em Progresso</p>
+                                    <p className="text-2xl font-bold text-accent-primary">{totalInProgress}</p>
                                 </div>
-                                <PlayCircle className="h-8 w-8 text-blue-400" />
+                                <PlayCircle className="h-8 w-8 text-accent-primary" />
                             </div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-bg-secondary rounded-lg border border-accent-success/30 p-4 hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-500">Concluídas</p>
-                                    <p className="text-2xl font-bold text-green-600">{totalCompleted}</p>
+                                    <p className="text-sm text-text-secondary">Concluídas</p>
+                                    <p className="text-2xl font-bold text-accent-success">{totalCompleted}</p>
                                 </div>
-                                <CheckCircle className="h-8 w-8 text-green-400" />
+                                <CheckCircle className="h-8 w-8 text-accent-success" />
                             </div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-bg-secondary rounded-lg border border-accent-error/30 p-4 hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-500">Bloqueadas</p>
-                                    <p className="text-2xl font-bold text-red-600">{totalBlocked}</p>
+                                    <p className="text-sm text-text-secondary">Bloqueadas</p>
+                                    <p className="text-2xl font-bold text-accent-error">{totalBlocked}</p>
                                 </div>
-                                <Pause className="h-8 w-8 text-red-400" />
+                                <Pause className="h-8 w-8 text-accent-error" />
                             </div>
                         </div>
-                        <div className="bg-white rounded-lg shadow p-4">
+                        <div className="bg-bg-secondary rounded-lg border border-purple-500/30 p-4 hover:bg-bg-tertiary transition-colors">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-sm text-gray-500">Tempo Médio</p>
-                                    <p className="text-2xl font-bold text-purple-600">
+                                    <p className="text-sm text-text-secondary">Tempo Médio</p>
+                                    <p className="text-2xl font-bold text-purple-400">
                                         {avgCompletionTime ? formatDuration(avgCompletionTime) : '-'}
                                     </p>
                                 </div>
@@ -401,38 +392,40 @@ function TasksPageContent() {
                                 onClick={() => setFilters({
                                     project: filters.project === summary.project_key ? 'all' : summary.project_key
                                 })}
-                                className={`bg-white rounded-lg shadow p-6 cursor-pointer hover:shadow-md transition-shadow ${
-                                    filters.project === summary.project_key ? 'ring-2 ring-indigo-500' : ''
+                                className={`bg-bg-secondary rounded-lg border p-6 cursor-pointer hover:bg-bg-tertiary transition-all ${
+                                    filters.project === summary.project_key 
+                                        ? 'ring-2 ring-accent-primary border-accent-primary' 
+                                        : 'border-border-default hover:border-border-hover'
                                 }`}
                             >
                                 <div className="flex items-center gap-3 mb-4">
-                                    <BarChart3 className="h-6 w-6 text-indigo-600" />
-                                    <h3 className="font-semibold text-gray-900">{summary.project_name}</h3>
+                                    <BarChart3 className="h-6 w-6 text-accent-primary" />
+                                    <h3 className="font-semibold text-text-primary">{summary.project_name}</h3>
                                 </div>
                                 <div className="space-y-2">
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Pendentes</span>
-                                        <span className="font-semibold text-gray-900">{summary.pending || 0}</span>
+                                        <span className="text-text-secondary">Pendentes</span>
+                                        <span className="font-semibold text-text-primary">{summary.pending || 0}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Em Progresso</span>
-                                        <span className="font-semibold text-blue-600">{summary.in_progress || 0}</span>
+                                        <span className="text-text-secondary">Em Progresso</span>
+                                        <span className="font-semibold text-accent-primary">{summary.in_progress || 0}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Concluídas</span>
-                                        <span className="font-semibold text-green-600">{summary.completed || 0}</span>
+                                        <span className="text-text-secondary">Concluídas</span>
+                                        <span className="font-semibold text-accent-success">{summary.completed || 0}</span>
                                     </div>
                                     <div className="flex justify-between text-sm">
-                                        <span className="text-gray-600">Bloqueadas</span>
-                                        <span className="font-semibold text-red-600">{summary.blocked || 0}</span>
+                                        <span className="text-text-secondary">Bloqueadas</span>
+                                        <span className="font-semibold text-accent-error">{summary.blocked || 0}</span>
                                     </div>
                                 </div>
-                                <div className="mt-4 pt-4 border-t flex justify-between items-center">
-                                    <p className="text-xs text-gray-500">
+                                <div className="mt-4 pt-4 border-t border-border-default flex justify-between items-center">
+                                    <p className="text-xs text-text-muted">
                                         Total: {summary.total || 0} tarefas
                                     </p>
                                     {summary.avg_completion_time_minutes && (
-                                        <p className="text-xs text-purple-600 flex items-center gap-1">
+                                        <p className="text-xs text-purple-400 flex items-center gap-1">
                                             <Timer className="h-3 w-3" />
                                             {formatDuration(summary.avg_completion_time_minutes)}
                                         </p>
@@ -456,48 +449,48 @@ function TasksPageContent() {
 
                     {/* Error Message */}
                     {error && (
-                        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                            <p className="text-red-700">{error}</p>
-                            <p className="text-red-500 text-sm mt-2">
-                                Execute o script SQL em <code>scripts/create-tasks-table.sql</code> no seu Supabase para criar as tabelas necessárias.
+                        <div className="bg-accent-error/10 border border-accent-error/30 rounded-lg p-4 mb-6">
+                            <p className="text-accent-error">{error}</p>
+                            <p className="text-accent-error/70 text-sm mt-2">
+                                Execute o script SQL em <code className="bg-bg-tertiary px-1 rounded">scripts/create-tasks-table.sql</code> no seu Supabase para criar as tabelas necessárias.
                             </p>
                         </div>
                     )}
 
                     {/* Tasks List */}
-                    <div className="bg-white rounded-lg shadow">
-                        <div className="p-6 border-b">
-                            <h2 className="text-xl font-semibold text-gray-900 flex items-center gap-2">
-                                <CheckCircle className="h-6 w-6 text-indigo-600" />
+                    <div className="bg-bg-secondary rounded-lg border border-border-default">
+                        <div className="p-6 border-b border-border-default">
+                            <h2 className="text-xl font-semibold text-text-primary flex items-center gap-2">
+                                <CheckCircle className="h-6 w-6 text-accent-primary" />
                                 Tarefas {filters.project !== 'all' ? `- ${getProjectName(filters.project)}` : ''}
                             </h2>
                         </div>
 
                         {loadingTasks ? (
                             <div className="p-12 text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando tarefas...</p>
+                                <div className="animate-spin rounded-full h-8 w-8 border-2 border-accent-primary border-t-transparent mx-auto"></div>
+                                <p className="mt-4 text-text-secondary">Carregando tarefas...</p>
                             </div>
                         ) : tasks.length === 0 ? (
                             <div className="p-12 text-center">
-                                <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-                                <p className="text-gray-900 font-semibold text-lg">Nenhuma tarefa encontrada</p>
-                                <p className="text-gray-500 mt-2">
+                                <CheckCircle className="h-16 w-16 text-accent-success mx-auto mb-4" />
+                                <p className="text-text-primary font-semibold text-lg">Nenhuma tarefa encontrada</p>
+                                <p className="text-text-secondary mt-2">
                                     {hasActiveFilters
                                         ? 'Nenhuma tarefa encontrada com os filtros atuais.'
                                         : 'Não há tarefas ativas no momento.'}
                                 </p>
                                 <button
                                     onClick={() => setShowNewTaskForm(true)}
-                                    className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                                    className="mt-4 px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-blue-600 transition-colors"
                                 >
                                     Criar Nova Tarefa
                                 </button>
                             </div>
                         ) : (
-                            <div className="divide-y">
+                            <div className="divide-y divide-border-default">
                                 {tasks.map((task) => (
-                                    <div key={task.id} className="p-4 hover:bg-gray-50">
+                                    <div key={task.id} className="p-4 hover:bg-bg-tertiary transition-colors">
                                         <div className="flex items-start justify-between">
                                             <div className="flex items-start gap-4 flex-1">
                                                 <div className="mt-1">
@@ -505,18 +498,18 @@ function TasksPageContent() {
                                                 </div>
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2 mb-1">
-                                                        <h3 className="font-semibold text-gray-900">{task.title}</h3>
+                                                        <h3 className="font-semibold text-text-primary">{task.title}</h3>
                                                         <span className={`px-2 py-0.5 rounded text-xs font-medium ${getPriorityColor(task.priority)}`}>
                                                             {task.priority}
                                                         </span>
                                                     </div>
                                                     {task.description && (
-                                                        <p className="text-sm text-gray-600 mb-2">{task.description}</p>
+                                                        <p className="text-sm text-text-secondary mb-2">{task.description}</p>
                                                     )}
 
                                                     {/* Time Metrics Row */}
-                                                    <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500 mb-2">
-                                                        <span className="bg-gray-100 px-2 py-1 rounded">
+                                                    <div className="flex flex-wrap items-center gap-4 text-xs text-text-muted mb-2">
+                                                        <span className="bg-bg-tertiary px-2 py-1 rounded">
                                                             {getProjectName(task.project_key)}
                                                         </span>
                                                         <span className="flex items-center gap-1">
@@ -524,13 +517,13 @@ function TasksPageContent() {
                                                             Criada: {formatDate(task.created_at)}
                                                         </span>
                                                         {task.started_at && (
-                                                            <span className="flex items-center gap-1 text-blue-600">
+                                                            <span className="flex items-center gap-1 text-accent-primary">
                                                                 <PlayCircle className="h-3 w-3" />
                                                                 Início: {formatDateTime(task.started_at)}
                                                             </span>
                                                         )}
                                                         {task.completed_at && (
-                                                            <span className="flex items-center gap-1 text-green-600">
+                                                            <span className="flex items-center gap-1 text-accent-success">
                                                                 <CheckCircle className="h-3 w-3" />
                                                                 Fim: {formatDateTime(task.completed_at)}
                                                             </span>
@@ -540,19 +533,19 @@ function TasksPageContent() {
                                                     {/* Duration Metrics */}
                                                     <div className="flex flex-wrap items-center gap-3 text-xs">
                                                         {task.time_to_complete_minutes && (
-                                                            <span className="flex items-center gap-1 bg-purple-50 text-purple-700 px-2 py-1 rounded">
+                                                            <span className="flex items-center gap-1 bg-purple-500/20 text-purple-400 px-2 py-1 rounded">
                                                                 <Timer className="h-3 w-3" />
                                                                 Duração: {formatDuration(task.time_to_complete_minutes)}
                                                             </span>
                                                         )}
                                                         {task.estimated_hours && (
-                                                            <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                                                            <span className="flex items-center gap-1 bg-accent-primary/20 text-accent-primary px-2 py-1 rounded">
                                                                 <TrendingUp className="h-3 w-3" />
                                                                 Estimado: {task.estimated_hours}h
                                                             </span>
                                                         )}
                                                         {task.actual_hours && (
-                                                            <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-1 rounded">
+                                                            <span className="flex items-center gap-1 bg-accent-success/20 text-accent-success px-2 py-1 rounded">
                                                                 <CheckCircle className="h-3 w-3" />
                                                                 Real: {task.actual_hours}h
                                                             </span>
@@ -560,8 +553,8 @@ function TasksPageContent() {
                                                         {task.due_date && (
                                                             <span className={`flex items-center gap-1 px-2 py-1 rounded ${
                                                                 new Date(task.due_date) < new Date()
-                                                                    ? 'bg-red-50 text-red-700'
-                                                                    : 'bg-yellow-50 text-yellow-700'
+                                                                    ? 'bg-accent-error/20 text-accent-error'
+                                                                    : 'bg-accent-warning/20 text-accent-warning'
                                                             }`}>
                                                                 <Calendar className="h-3 w-3" />
                                                                 Prazo: {formatDate(task.due_date)}
@@ -574,7 +567,7 @@ function TasksPageContent() {
                                                 {task.status === 'pending' && (
                                                     <button
                                                         onClick={() => handleUpdateStatus(task.id, 'in_progress')}
-                                                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                                                        className="px-3 py-1 bg-accent-primary/20 text-accent-primary rounded hover:bg-accent-primary/30 text-sm transition-colors"
                                                     >
                                                         Iniciar
                                                     </button>
@@ -583,13 +576,13 @@ function TasksPageContent() {
                                                     <>
                                                         <button
                                                             onClick={() => handleUpdateStatus(task.id, 'completed')}
-                                                            className="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-sm"
+                                                            className="px-3 py-1 bg-accent-success/20 text-accent-success rounded hover:bg-accent-success/30 text-sm transition-colors"
                                                         >
                                                             Concluir
                                                         </button>
                                                         <button
                                                             onClick={() => handleUpdateStatus(task.id, 'blocked')}
-                                                            className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm"
+                                                            className="px-3 py-1 bg-accent-error/20 text-accent-error rounded hover:bg-accent-error/30 text-sm transition-colors"
                                                         >
                                                             Bloquear
                                                         </button>
@@ -598,7 +591,7 @@ function TasksPageContent() {
                                                 {task.status === 'blocked' && (
                                                     <button
                                                         onClick={() => handleUpdateStatus(task.id, 'in_progress')}
-                                                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-sm"
+                                                        className="px-3 py-1 bg-accent-primary/20 text-accent-primary rounded hover:bg-accent-primary/30 text-sm transition-colors"
                                                     >
                                                         Desbloquear
                                                     </button>
@@ -613,16 +606,16 @@ function TasksPageContent() {
 
                     {/* New Task Modal */}
                     {showNewTaskForm && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-                                <h2 className="text-xl font-semibold text-gray-900 mb-4">Nova Tarefa</h2>
+                        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                            <div className="bg-bg-secondary rounded-lg border border-border-default shadow-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+                                <h2 className="text-xl font-semibold text-text-primary mb-4">Nova Tarefa</h2>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Projeto *</label>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1">Projeto *</label>
                                         <select
                                             value={newTask.project_key}
                                             onChange={(e) => setNewTask({ ...newTask, project_key: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                                         >
                                             <option value="">Selecione um projeto</option>
                                             {projects.map((project) => (
@@ -633,32 +626,32 @@ function TasksPageContent() {
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Título *</label>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1">Título *</label>
                                         <input
                                             type="text"
                                             value={newTask.title}
                                             onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                                             placeholder="Título da tarefa"
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1">Descrição</label>
                                         <textarea
                                             value={newTask.description}
                                             onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                                             placeholder="Descrição opcional"
                                             rows={3}
                                         />
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Prioridade</label>
+                                            <label className="block text-sm font-medium text-text-secondary mb-1">Prioridade</label>
                                             <select
                                                 value={newTask.priority}
                                                 onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as 'urgent' | 'high' | 'medium' | 'low' })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                                             >
                                                 <option value="urgent">Urgente</option>
                                                 <option value="high">Alta</option>
@@ -667,32 +660,32 @@ function TasksPageContent() {
                                             </select>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium text-gray-700 mb-1">Horas Estimadas</label>
+                                            <label className="block text-sm font-medium text-text-secondary mb-1">Horas Estimadas</label>
                                             <input
                                                 type="number"
                                                 step="0.5"
                                                 min="0"
                                                 value={newTask.estimated_hours}
                                                 onChange={(e) => setNewTask({ ...newTask, estimated_hours: e.target.value })}
-                                                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                className="w-full px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                                                 placeholder="Ex: 2.5"
                                             />
                                         </div>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-1">Prazo (opcional)</label>
+                                        <label className="block text-sm font-medium text-text-secondary mb-1">Prazo (opcional)</label>
                                         <input
                                             type="date"
                                             value={newTask.due_date}
                                             onChange={(e) => setNewTask({ ...newTask, due_date: e.target.value })}
-                                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                            className="w-full px-3 py-2 bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                                         />
                                     </div>
                                 </div>
                                 <div className="flex justify-end gap-3 mt-6">
                                     <button
                                         onClick={() => setShowNewTaskForm(false)}
-                                        className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                                        className="px-4 py-2 text-text-secondary hover:text-text-primary transition-colors"
                                         disabled={creatingTask}
                                     >
                                         Cancelar
@@ -700,7 +693,7 @@ function TasksPageContent() {
                                     <button
                                         onClick={handleCreateTask}
                                         disabled={creatingTask}
-                                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+                                        className="px-4 py-2 bg-accent-primary text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 transition-colors"
                                     >
                                         {creatingTask ? 'Criando...' : 'Criar Tarefa'}
                                     </button>
@@ -717,16 +710,7 @@ function TasksPageContent() {
 // Main export with Suspense wrapper for useSearchParams
 export default function TasksPage() {
     return (
-        <Suspense
-            fallback={
-                <div className="flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                        <p className="mt-4 text-gray-600">Carregando...</p>
-                    </div>
-                </div>
-            }
-        >
+        <Suspense fallback={<PageLoading />}>
             <TasksPageContent />
         </Suspense>
     );

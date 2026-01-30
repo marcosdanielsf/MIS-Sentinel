@@ -2,19 +2,162 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =====================================================
+   Factor AI Design System - Theme Variables
+   ===================================================== */
+
 :root {
-    --background: #ffffff;
-    --foreground: #171717;
+    /* Background colors */
+    --color-bg-primary: #111318;
+    --color-bg-secondary: #1a1d24;
+    --color-bg-tertiary: #242830;
+    --color-bg-hover: #2d323c;
+
+    /* Text colors */
+    --color-text-primary: #f0f2f5;
+    --color-text-secondary: #9ca3af;
+    --color-text-muted: #6b7280;
+
+    /* Border colors */
+    --color-border-default: #2d323c;
+    --color-border-hover: #3d4451;
+
+    /* Accent colors */
+    --color-accent-primary: #3b82f6;
+    --color-accent-success: #22c55e;
+    --color-accent-warning: #f59e0b;
+    --color-accent-error: #ef4444;
+
+    /* Font families */
+    --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-    :root {
-        --background: #0a0a0a;
-        --foreground: #ededed;
+/* =====================================================
+   Base Styles
+   ===================================================== */
+
+body {
+    background-color: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+}
+
+/* =====================================================
+   Custom Scrollbar (Notion-like feel)
+   ===================================================== */
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-bg-tertiary);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-bg-hover);
+}
+
+/* Firefox scrollbar */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-bg-tertiary) transparent;
+}
+
+/* =====================================================
+   Skeleton Shimmer Animation
+   ===================================================== */
+
+@keyframes shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+    100% {
+        background-position: -200% 0;
     }
 }
 
-body {
-    background: var(--background);
-    color: var(--foreground);
+.animate-shimmer {
+    animation: shimmer 2s ease-in-out infinite;
+    background: linear-gradient(
+        90deg,
+        var(--color-bg-tertiary) 0%,
+        var(--color-bg-hover) 50%,
+        var(--color-bg-tertiary) 100%
+    );
+    background-size: 200% 100%;
+}
+
+/* =====================================================
+   Focus Ring Utility
+   ===================================================== */
+
+.focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2 focus:ring-offset-bg-primary;
+}
+
+/* =====================================================
+   Card Hover Animation
+   ===================================================== */
+
+.card-hover {
+    @apply transition-all duration-200 hover:bg-bg-hover hover:border-border-hover;
+}
+
+/* =====================================================
+   Input Styles
+   ===================================================== */
+
+input, textarea, select {
+    @apply bg-bg-secondary border-border-default text-text-primary placeholder-text-muted;
+}
+
+input:focus, textarea:focus, select:focus {
+    @apply border-accent-primary ring-1 ring-accent-primary;
+}
+
+/* =====================================================
+   Button Base Styles
+   ===================================================== */
+
+.btn-primary {
+    @apply bg-accent-primary text-white hover:bg-blue-600 transition-colors;
+}
+
+.btn-secondary {
+    @apply bg-bg-tertiary text-text-primary border border-border-default hover:bg-bg-hover hover:border-border-hover transition-colors;
+}
+
+.btn-danger {
+    @apply bg-accent-error text-white hover:bg-red-600 transition-colors;
+}
+
+/* =====================================================
+   Recharts Dark Theme Override
+   ===================================================== */
+
+.recharts-text {
+    fill: var(--color-text-secondary) !important;
+}
+
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+    stroke: var(--color-border-default) !important;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+    background-color: var(--color-bg-secondary) !important;
+    border: 1px solid var(--color-border-default) !important;
+    border-radius: 8px !important;
+}
+
+.recharts-tooltip-item {
+    color: var(--color-text-primary) !important;
 }

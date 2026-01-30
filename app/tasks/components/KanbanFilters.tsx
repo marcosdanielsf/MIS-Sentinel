@@ -6,7 +6,6 @@ import {
     Filter,
     X,
     ChevronDown,
-    Share2,
     CheckCircle,
     XCircle,
     Link2,
@@ -31,10 +30,10 @@ interface KanbanFiltersProps {
 
 const PRIORITY_OPTIONS = [
     { value: 'all', label: 'Todas Prioridades' },
-    { value: 'urgent', label: 'Urgente', color: 'bg-red-100 text-red-800' },
-    { value: 'high', label: 'Alta', color: 'bg-orange-100 text-orange-800' },
-    { value: 'medium', label: 'Média', color: 'bg-yellow-100 text-yellow-800' },
-    { value: 'low', label: 'Baixa', color: 'bg-blue-100 text-blue-800' },
+    { value: 'urgent', label: 'Urgente', color: 'bg-accent-error/20 text-accent-error' },
+    { value: 'high', label: 'Alta', color: 'bg-accent-warning/20 text-accent-warning' },
+    { value: 'medium', label: 'Média', color: 'bg-yellow-500/20 text-yellow-400' },
+    { value: 'low', label: 'Baixa', color: 'bg-accent-primary/20 text-accent-primary' },
 ];
 
 export default function KanbanFilters({
@@ -69,30 +68,30 @@ export default function KanbanFilters({
     }, [onFiltersChange]);
 
     return (
-        <div className="bg-white rounded-lg shadow mb-6">
+        <div className="bg-bg-secondary rounded-lg border border-border-default mb-6">
             <div className="p-4">
                 {/* Main Filters Row */}
                 <div className="flex flex-wrap items-center gap-3">
                     {/* Filter Icon */}
-                    <div className="flex items-center gap-2 text-gray-600">
+                    <div className="flex items-center gap-2 text-text-secondary">
                         <Filter className="h-5 w-5" />
                         <span className="text-sm font-medium hidden sm:inline">Filtros</span>
                     </div>
 
                     {/* Search Input */}
                     <div className="relative flex-1 min-w-[200px] max-w-md">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted" />
                         <input
                             type="text"
                             value={filters.search}
                             onChange={handleSearchChange}
                             placeholder="Buscar por título ou descrição..."
-                            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full pl-9 pr-8 py-2 text-sm bg-bg-tertiary border border-border-default rounded-lg text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent-primary focus:border-transparent"
                         />
                         {filters.search && (
                             <button
                                 onClick={handleSearchClear}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-text-muted hover:text-text-primary transition-colors"
                             >
                                 <X className="h-4 w-4" />
                             </button>
@@ -104,7 +103,7 @@ export default function KanbanFilters({
                         <select
                             value={filters.project}
                             onChange={(e) => onFiltersChange({ project: e.target.value })}
-                            className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer min-w-[150px]"
+                            className="appearance-none pl-3 pr-8 py-2 text-sm bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary cursor-pointer min-w-[150px]"
                         >
                             <option value="all">Todos Projetos</option>
                             {projects.map((project) => (
@@ -113,7 +112,7 @@ export default function KanbanFilters({
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
                     </div>
 
                     {/* Priority Dropdown */}
@@ -121,7 +120,7 @@ export default function KanbanFilters({
                         <select
                             value={filters.priority}
                             onChange={(e) => onFiltersChange({ priority: e.target.value })}
-                            className="appearance-none pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer min-w-[140px]"
+                            className="appearance-none pl-3 pr-8 py-2 text-sm bg-bg-tertiary border border-border-default rounded-lg text-text-primary focus:outline-none focus:ring-2 focus:ring-accent-primary cursor-pointer min-w-[140px]"
                         >
                             {PRIORITY_OPTIONS.map((option) => (
                                 <option key={option.value} value={option.value}>
@@ -129,7 +128,7 @@ export default function KanbanFilters({
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-text-muted pointer-events-none" />
                     </div>
 
                     {/* Toggle Buttons */}
@@ -139,8 +138,8 @@ export default function KanbanFilters({
                             onClick={() => onFiltersChange({ showCompleted: !filters.showCompleted })}
                             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
                                 filters.showCompleted
-                                    ? 'bg-green-50 border-green-300 text-green-700'
-                                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                                    ? 'bg-accent-success/10 border-accent-success/30 text-accent-success'
+                                    : 'bg-bg-tertiary border-border-default text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                             }`}
                             title="Mostrar tarefas concluídas"
                         >
@@ -153,8 +152,8 @@ export default function KanbanFilters({
                             onClick={() => onFiltersChange({ showCancelled: !filters.showCancelled })}
                             className={`flex items-center gap-1.5 px-3 py-2 text-sm rounded-lg border transition-colors ${
                                 filters.showCancelled
-                                    ? 'bg-gray-100 border-gray-400 text-gray-700'
-                                    : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                                    ? 'bg-bg-hover border-border-hover text-text-primary'
+                                    : 'bg-bg-tertiary border-border-default text-text-secondary hover:bg-bg-hover hover:text-text-primary'
                             }`}
                             title="Mostrar tarefas canceladas"
                         >
@@ -167,7 +166,7 @@ export default function KanbanFilters({
                     {hasActiveFilters && (
                         <button
                             onClick={onReset}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-accent-error hover:bg-accent-error/10 rounded-lg transition-colors"
                         >
                             <X className="h-4 w-4" />
                             <span>Limpar</span>
@@ -178,7 +177,7 @@ export default function KanbanFilters({
                     <div className="relative ml-auto">
                         <button
                             onClick={handleCopyLink}
-                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-2 text-sm text-text-secondary hover:text-accent-primary hover:bg-accent-primary/10 rounded-lg transition-colors"
                             title="Copiar link com filtros"
                         >
                             <Link2 className="h-4 w-4" />
@@ -187,7 +186,7 @@ export default function KanbanFilters({
 
                         {/* Copied Toast */}
                         {showCopiedToast && (
-                            <div className="absolute right-0 top-full mt-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg shadow-lg whitespace-nowrap z-10">
+                            <div className="absolute right-0 top-full mt-2 px-3 py-1.5 bg-bg-tertiary text-text-primary text-xs rounded-lg shadow-lg border border-border-default whitespace-nowrap z-10">
                                 Link copiado!
                             </div>
                         )}
@@ -195,12 +194,12 @@ export default function KanbanFilters({
                 </div>
 
                 {/* Results Counter */}
-                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <p className="text-sm text-gray-600">
+                <div className="mt-3 pt-3 border-t border-border-default flex items-center justify-between">
+                    <p className="text-sm text-text-secondary">
                         Mostrando{' '}
-                        <span className="font-semibold text-gray-900">{filteredCount}</span>
+                        <span className="font-semibold text-text-primary">{filteredCount}</span>
                         {' de '}
-                        <span className="font-semibold text-gray-900">{totalTasks}</span>
+                        <span className="font-semibold text-text-primary">{totalTasks}</span>
                         {' tasks'}
                     </p>
 
@@ -230,14 +229,14 @@ export default function KanbanFilters({
                                 <FilterTag
                                     label="Concluídas"
                                     onRemove={() => onFiltersChange({ showCompleted: false })}
-                                    color="bg-green-100 text-green-700"
+                                    color="bg-accent-success/20 text-accent-success"
                                 />
                             )}
                             {filters.showCancelled && (
                                 <FilterTag
                                     label="Canceladas"
                                     onRemove={() => onFiltersChange({ showCancelled: false })}
-                                    color="bg-gray-100 text-gray-700"
+                                    color="bg-bg-hover text-text-secondary"
                                 />
                             )}
                         </div>
@@ -252,7 +251,7 @@ export default function KanbanFilters({
 function FilterTag({
     label,
     onRemove,
-    color = 'bg-indigo-100 text-indigo-700',
+    color = 'bg-accent-primary/20 text-accent-primary',
 }: {
     label: string;
     onRemove: () => void;
@@ -265,7 +264,7 @@ function FilterTag({
             {label}
             <button
                 onClick={onRemove}
-                className="hover:bg-black/10 rounded-full p-0.5 transition-colors"
+                className="hover:bg-white/10 rounded-full p-0.5 transition-colors"
             >
                 <X className="h-3 w-3" />
             </button>

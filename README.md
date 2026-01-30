@@ -13,6 +13,37 @@ O **MIS SENTINEL** é um sistema completo de inteligência que integra:
 
 ## 🎯 Funcionalidades
 
+### 🆕 Quadro Kanban (`/tasks`) - NOVO v2.0
+
+O sistema agora inclui um **Gerenciador de Tarefas** estilo Kanban com:
+
+- **Visualização Kanban** - 5 colunas: Pendentes, Em Progresso, Concluídas, Bloqueadas, Canceladas
+- **Prioridades visuais** - Urgente 🔴, Alta 🟠, Média 🟡, Baixa 🔵
+- **Métricas de tempo automáticas**:
+  - Tempo até iniciar (time_to_start)
+  - Tempo de execução (time_to_complete)
+  - Tempo total (total_duration)
+- **Filtros avançados** por projeto e status
+- **Cards de resumo** por projeto com métricas
+- **Integração com Clawdbot** para criação via IA
+
+![Kanban Screenshot](./public/screenshots/kanban-placeholder.png)
+
+### 🤖 Integração Clawdbot - NOVO v2.0
+
+Crie e gerencie tarefas via conversa natural com IA:
+
+```
+"Cria uma tarefa urgente para revisar o workflow de vendas"
+```
+
+- Tarefas criadas automaticamente no Kanban
+- Rastreamento de sessões de conversa
+- Contexto persistido entre interações
+- Resumos automáticos gerados pela IA
+
+📖 [Documentação completa da integração](./docs/CLAWDBOT-INTEGRATION.md)
+
 ### 1. Dashboard Principal (`/dashboard`)
 - **Métricas em Tempo Real**: Total de mensagens, alertas ativos, alertas críticos
 - **Análise de Sentimento**: Gráfico de pizza mostrando distribuição de sentimentos
@@ -144,19 +175,25 @@ O workflow n8n deve:
 | Rota | Descrição | Funcionalidades |
 |------|-----------|-----------------|
 | `/dashboard` | Visão geral | Métricas principais, gráficos, alertas recentes |
+| `/tasks` | 🆕 **Kanban** | Gerenciador de tarefas, métricas de tempo, prioridades |
 | `/alerts` | Gerenciar alertas | Filtros, reconhecer, resolver, expandir detalhes |
 | `/messages` | Histórico de mensagens | Busca, filtros múltiplos, análise AI |
+| `/issues` | Gestão de Issues | CRT, resolução, histórico de ações |
 | `/team` | Monitor de equipe | Performance, sentimento, comparações |
+| `/partners` | Parceiros/Afiliados | Stripe Connect, comissões, clientes |
 | `/users` | Gerenciar usuários | Lista de usuários do sistema |
 
 ## 🎨 Stack Tecnológico
 
-- **Frontend**: Next.js 14 (App Router), React 19, TypeScript
-- **Styling**: Tailwind CSS 4
+- **Frontend**: Next.js 15 (App Router), React 18, TypeScript
+- **Styling**: Tailwind CSS 3
 - **Charts**: Recharts
+- **Kanban**: @dnd-kit (drag & drop) - v2.0
+- **Icons**: Lucide React
 - **Database**: Supabase (PostgreSQL)
 - **Auth**: Supabase Auth
-- **AI**: Google Gemini (via n8n)
+- **AI**: Google Gemini (via n8n), Clawdbot (v2.0)
+- **Payments**: Stripe Connect
 - **Automation**: n8n
 - **Deploy**: Vercel
 
@@ -220,15 +257,29 @@ npx tsx scripts/full-supabase-scan.ts  # Scan completo do Supabase
 - **n8n Workflow**: https://cliente-a1.mentorfy.io/workflow/wnceqwQ2x01AX5pg/5ace1f
 - **Webhook**: https://cliente-a1.mentorfy.io/webhook/grupo-bposs
 
+## 📚 Documentação
+
+| Documento | Descrição |
+|-----------|-----------|
+| [Integração Clawdbot](./docs/CLAWDBOT-INTEGRATION.md) | Guia completo de integração com IA |
+| [Referência da API](./docs/API-REFERENCE.md) | Endpoints, exemplos e códigos de erro |
+| [Uso do Kanban](./docs/KANBAN-USAGE.md) | Manual completo do quadro Kanban |
+| [Changelog](./docs/CHANGELOG.md) | Histórico de versões |
+| [Setup n8n](./docs/N8N-INTEGRATION-GUIDE.md) | Integração com n8n |
+| [Stripe Connect](./docs/STRIPE-SETUP-GUIDE.md) | Configuração de pagamentos |
+
 ## 🎯 Próximos Passos
 
 1. ✅ Criar schema no Supabase
 2. ✅ Popular dados de exemplo
 3. ✅ Testar todas as páginas
-4. 🔲 Configurar n8n para salvar mensagens reais
-5. 🔲 Ajustar prompts da AI Gemini
-6. 🔲 Deploy para produção
-7. 🔲 Configurar notificações de alertas (email/WhatsApp)
+4. ✅ Implementar Kanban de tarefas
+5. ✅ Integração Clawdbot
+6. 🔲 Configurar n8n para salvar mensagens reais
+7. 🔲 Ajustar prompts da AI Gemini
+8. 🔲 Deploy para produção
+9. 🔲 Configurar notificações de alertas (email/WhatsApp)
+10. 🔲 Implementar drag & drop no Kanban
 
 ## 🤝 Equipe Mottivme
 

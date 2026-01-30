@@ -186,10 +186,10 @@ export default function DashboardPage() {
 
     if (loading || !user) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-screen bg-bg-primary">
                 <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-600">Carregando...</p>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                    <p className="mt-4 text-text-secondary">Carregando...</p>
                 </div>
             </div>
         );
@@ -208,15 +208,15 @@ export default function DashboardPage() {
     };
 
     return (
-        <div className="flex min-h-screen bg-gray-100">
+        <div className="flex min-h-screen bg-bg-primary">
             <Sidebar />
 
             <div className="flex-1 overflow-auto">
                 <div className="p-8">
                     <div className="flex items-center justify-between mb-8">
                         <div>
-                            <h1 className="text-3xl font-bold text-gray-900">🤖 Dashboard MIS SENTINEL</h1>
-                            <p className="mt-2 text-gray-600">
+                            <h1 className="text-3xl font-bold text-text-primary">🤖 Dashboard MIS SENTINEL</h1>
+                            <p className="mt-2 text-text-secondary">
                                 Sistema de Inteligência Mottivme - Monitoramento em Tempo Real
                             </p>
                         </div>
@@ -230,8 +230,8 @@ export default function DashboardPage() {
                     {loadingStats ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="text-center">
-                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                                <p className="mt-4 text-gray-600">Carregando dados...</p>
+                                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent-primary mx-auto"></div>
+                                <p className="mt-4 text-text-secondary">Carregando dados...</p>
                             </div>
                         </div>
                     ) : (
@@ -268,23 +268,30 @@ export default function DashboardPage() {
                             </div>
 
                             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                                <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-text-primary mb-4">
                                         📊 Mensagens no Período
                                     </h3>
                                     <ResponsiveContainer width="100%" height={300}>
                                         <BarChart data={stats.messagesOverTime}>
-                                            <CartesianGrid strokeDasharray="3 3" />
-                                            <XAxis dataKey="name" />
-                                            <YAxis />
-                                            <Tooltip />
-                                            <Bar dataKey="mensagens" fill="#3b82f6" />
+                                            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-default)" />
+                                            <XAxis dataKey="name" stroke="var(--color-text-secondary)" />
+                                            <YAxis stroke="var(--color-text-secondary)" />
+                                            <Tooltip 
+                                                contentStyle={{ 
+                                                    backgroundColor: 'var(--color-bg-secondary)', 
+                                                    border: '1px solid var(--color-border-default)',
+                                                    borderRadius: '8px',
+                                                    color: 'var(--color-text-primary)'
+                                                }} 
+                                            />
+                                            <Bar dataKey="mensagens" fill="var(--color-accent-primary)" />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
 
-                                <div className="bg-white p-6 rounded-lg shadow">
-                                    <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                                <div className="bg-bg-secondary border border-border-default p-6 rounded-lg">
+                                    <h3 className="text-lg font-semibold text-text-primary mb-4">
                                         😊 Análise de Sentimento
                                     </h3>
                                     {stats.sentimentBreakdown.length > 0 ? (
@@ -304,11 +311,18 @@ export default function DashboardPage() {
                                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip />
+                                                <Tooltip 
+                                                    contentStyle={{ 
+                                                        backgroundColor: 'var(--color-bg-secondary)', 
+                                                        border: '1px solid var(--color-border-default)',
+                                                        borderRadius: '8px',
+                                                        color: 'var(--color-text-primary)'
+                                                    }} 
+                                                />
                                             </PieChart>
                                         </ResponsiveContainer>
                                     ) : (
-                                        <div className="flex items-center justify-center h-[300px] text-gray-500">
+                                        <div className="flex items-center justify-center h-[300px] text-text-muted">
                                             Sem dados de sentimento
                                         </div>
                                     )}
@@ -317,29 +331,29 @@ export default function DashboardPage() {
 
                             {/* Key Metrics */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-lg shadow text-white">
-                                    <h4 className="text-sm font-semibold mb-2">Score Médio de Urgência</h4>
-                                    <p className="text-4xl font-bold">{stats.avgUrgency.toFixed(1)}/10</p>
-                                    <div className="mt-4 bg-white bg-opacity-20 rounded-full h-3">
+                                <div className="bg-bg-secondary border border-accent-primary/30 p-6 rounded-lg">
+                                    <h4 className="text-sm font-medium text-text-secondary mb-2">Score Médio de Urgência</h4>
+                                    <p className="text-4xl font-bold text-text-primary">{stats.avgUrgency.toFixed(1)}<span className="text-lg text-text-muted">/10</span></p>
+                                    <div className="mt-4 bg-bg-tertiary rounded-full h-3">
                                         <div
-                                            className="bg-white rounded-full h-3 transition-all"
+                                            className="bg-accent-primary rounded-full h-3 transition-all"
                                             style={{ width: `${(stats.avgUrgency / 10) * 100}%` }}
                                         ></div>
                                     </div>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-lg shadow text-white">
-                                    <h4 className="text-sm font-semibold mb-2">Total de Issues</h4>
-                                    <p className="text-4xl font-bold">{stats.totalIssues}</p>
-                                    <p className="text-sm mt-2 opacity-90">
-                                        {stats.openIssues} abertos · {stats.totalIssues - stats.openIssues} resolvidos
+                                <div className="bg-bg-secondary border border-accent-success/30 p-6 rounded-lg">
+                                    <h4 className="text-sm font-medium text-text-secondary mb-2">Total de Issues</h4>
+                                    <p className="text-4xl font-bold text-text-primary">{stats.totalIssues}</p>
+                                    <p className="text-sm mt-2 text-text-muted">
+                                        <span className="text-accent-warning">{stats.openIssues} abertos</span> · <span className="text-accent-success">{stats.totalIssues - stats.openIssues} resolvidos</span>
                                     </p>
                                 </div>
 
-                                <div className="bg-gradient-to-br from-purple-500 to-purple-600 p-6 rounded-lg shadow text-white">
-                                    <h4 className="text-sm font-semibold mb-2">Cobertura de Monitoramento</h4>
-                                    <p className="text-4xl font-bold">24/7</p>
-                                    <p className="text-sm mt-2 opacity-90">Sistema sempre ativo</p>
+                                <div className="bg-bg-secondary border border-purple-500/30 p-6 rounded-lg">
+                                    <h4 className="text-sm font-medium text-text-secondary mb-2">Cobertura de Monitoramento</h4>
+                                    <p className="text-4xl font-bold text-text-primary">24/7</p>
+                                    <p className="text-sm mt-2 text-accent-success">● Sistema sempre ativo</p>
                                 </div>
                             </div>
 
@@ -349,60 +363,60 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Recent Issues */}
-                            <div className="bg-white rounded-lg shadow">
+                            <div className="bg-bg-secondary border border-border-default rounded-lg">
                                 <div className="p-6">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-semibold text-gray-900">
+                                        <h3 className="text-lg font-semibold text-text-primary">
                                             🎯 Issues Abertos - Ação Necessária
                                         </h3>
                                         <Link
                                             href="/issues"
-                                            className="text-sm text-indigo-600 hover:text-indigo-800 font-medium"
+                                            className="text-sm text-accent-primary hover:text-blue-400 font-medium transition-colors"
                                         >
                                             Ver todos →
                                         </Link>
                                     </div>
 
                                     {stats.recentIssues.length === 0 ? (
-                                        <div className="text-center py-8 text-gray-500">
-                                            <CheckCircle className="h-12 w-12 mx-auto mb-2 text-green-500" />
-                                            <p>Nenhum issue aberto no momento</p>
+                                        <div className="text-center py-8 text-text-muted">
+                                            <CheckCircle className="h-12 w-12 mx-auto mb-2 text-accent-success" />
+                                            <p className="text-text-secondary">Nenhum issue aberto no momento</p>
                                             <p className="text-sm mt-1">Todos os problemas foram resolvidos 🎉</p>
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
                                             {stats.recentIssues.map((issue) => (
-                                                <div key={issue.id} className="flex items-start gap-4 py-3 border-b last:border-b-0">
-                                                    <div className={`p-2 rounded-lg ${issue.priority === 'critical' ? 'bg-red-100' :
-                                                            issue.priority === 'high' ? 'bg-orange-100' :
-                                                                issue.priority === 'medium' ? 'bg-yellow-100' :
-                                                                    'bg-blue-100'
+                                                <div key={issue.id} className="flex items-start gap-4 py-3 border-b border-border-default last:border-b-0">
+                                                    <div className={`p-2 rounded-lg ${issue.priority === 'critical' ? 'bg-accent-error/10' :
+                                                            issue.priority === 'high' ? 'bg-accent-warning/10' :
+                                                                issue.priority === 'medium' ? 'bg-yellow-500/10' :
+                                                                    'bg-accent-primary/10'
                                                         }`}>
-                                                        <AlertTriangle className={`h-5 w-5 ${issue.priority === 'critical' ? 'text-red-600' :
-                                                                issue.priority === 'high' ? 'text-orange-600' :
-                                                                    issue.priority === 'medium' ? 'text-yellow-600' :
-                                                                        'text-blue-600'
+                                                        <AlertTriangle className={`h-5 w-5 ${issue.priority === 'critical' ? 'text-accent-error' :
+                                                                issue.priority === 'high' ? 'text-accent-warning' :
+                                                                    issue.priority === 'medium' ? 'text-yellow-500' :
+                                                                        'text-accent-primary'
                                                             }`} />
                                                     </div>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <p className="font-semibold text-gray-900">{issue.issue_type}</p>
-                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${issue.priority === 'critical' ? 'bg-red-100 text-red-800' :
-                                                                    issue.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                                                                        issue.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                                                            'bg-blue-100 text-blue-800'
+                                                            <p className="font-semibold text-text-primary">{issue.issue_type}</p>
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${issue.priority === 'critical' ? 'bg-accent-error/20 text-accent-error' :
+                                                                    issue.priority === 'high' ? 'bg-accent-warning/20 text-accent-warning' :
+                                                                        issue.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-500' :
+                                                                            'bg-accent-primary/20 text-accent-primary'
                                                                 }`}>
                                                                 {issue.priority}
                                                             </span>
-                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${issue.status === 'open' ? 'bg-gray-100 text-gray-800' : 'bg-blue-100 text-blue-800'}`}>
+                                                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${issue.status === 'open' ? 'bg-bg-tertiary text-text-secondary' : 'bg-accent-primary/20 text-accent-primary'}`}>
                                                                 {issue.status}
                                                             </span>
                                                         </div>
-                                                        <p className="text-sm text-gray-600">
+                                                        <p className="text-sm text-text-secondary">
                                                             {issue.customer_name ? `Cliente: ${issue.customer_name}` : 'Cliente: N/A'}
                                                         </p>
                                                     </div>
-                                                    <span className="text-xs text-gray-400 whitespace-nowrap">
+                                                    <span className="text-xs text-text-muted whitespace-nowrap">
                                                         {formatDate(issue.detected_at)}
                                                     </span>
                                                 </div>

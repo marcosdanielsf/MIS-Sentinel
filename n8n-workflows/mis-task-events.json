@@ -1,0 +1,386 @@
+{
+  "name": "MIS Sentinel - Task Events",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "mis-task-events",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Task Events Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "mis-task-events"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate and extract event data\nconst body = $input.first().json.body || $input.first().json;\n\nconst event = body.event;\nconst task = body.task || {};\nconst timestamp = body.timestamp || new Date().toISOString();\nconst triggeredBy = body.triggered_by || 'system';\n\nif (!event) {\n  return [{\n    json: {\n      valid: false,\n      error: 'Missing event type'\n    }\n  }];\n}\n\n// Determine notification priority\nlet shouldNotify = false;\nlet notificationType = 'log';\nlet notificationMessage = '';\n\nswitch (event) {\n  case 'task.created':\n    if (['urgent', 'high'].includes(task.priority)) {\n      shouldNotify = true;\n      notificationType = 'group_notify';\n      notificationMessage = `🆕 Nova task ${task.priority?.toUpperCase()}: ${task.title}\\n📁 Projeto: ${task.project_key || 'N/A'}\\n📅 Prazo: ${task.due_date || 'Sem prazo'}`;\n    }\n    break;\n    \n  case 'task.completed':\n    shouldNotify = true;\n    notificationType = 'log';\n    notificationMessage = `✅ Task concluída: ${task.title}\\n⏱️ Tempo: ${task.actual_hours ? task.actual_hours + 'h' : 'N/A'}`;\n    break;\n    \n  case 'task.blocked':\n    shouldNotify = true;\n    notificationType = 'alert_responsible';\n    notificationMessage = `🚫 Task BLOQUEADA: ${task.title}\\n📁 Projeto: ${task.project_key || 'N/A'}\\n👤 Responsável: ${task.assigned_to || 'Não atribuído'}\\n📝 Motivo: ${task.notes || 'Não especificado'}`;\n    break;\n    \n  case 'task.overdue':\n    shouldNotify = true;\n    notificationType = 'overdue_alert';\n    notificationMessage = `⚠️ PRAZO ESTOURADO: ${task.title}\\n📁 Projeto: ${task.project_key || 'N/A'}\\n📅 Era para: ${task.due_date}\\n👤 Responsável: ${task.assigned_to || 'Não atribuído'}`;\n    break;\n    \n  case 'task.due_soon':\n    shouldNotify = true;\n    notificationType = 'reminder';\n    notificationMessage = `⏰ Prazo próximo (<24h): ${task.title}\\n📁 Projeto: ${task.project_key || 'N/A'}\\n📅 Prazo: ${task.due_date}`;\n    break;\n    \n  default:\n    notificationType = 'log';\n    notificationMessage = `📌 Evento: ${event} - ${task.title || 'N/A'}`;\n}\n\nreturn [{\n  json: {\n    valid: true,\n    event,\n    task,\n    timestamp,\n    triggeredBy,\n    shouldNotify,\n    notificationType,\n    notificationMessage,\n    taskId: task.id,\n    taskTitle: task.title,\n    taskPriority: task.priority,\n    taskStatus: task.status,\n    projectKey: task.project_key\n  }\n}];"
+      },
+      "id": "process-event",
+      "name": "Process Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "valid-check",
+              "leftValue": "={{ $json.valid }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "check-valid",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: false, error: $json.error || 'Invalid event' }) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "error-response",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [850, 450]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.notificationType }}",
+                    "rightValue": "group_notify",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Group Notify"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.notificationType }}",
+                    "rightValue": "alert_responsible",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Alert Responsible"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.notificationType }}",
+                    "rightValue": "overdue_alert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Overdue Alert"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.notificationType }}",
+                    "rightValue": "log",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Log Only"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "route-by-type",
+      "name": "Route by Notification Type",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO mottivme_intelligence_system.task_event_logs (event_type, task_id, task_title, project_key, priority, notification_type, message, triggered_by, processed_at)\nVALUES (\n  '{{ $json.event }}',\n  '{{ $json.taskId }}',\n  '{{ $json.taskTitle }}',\n  '{{ $json.projectKey }}',\n  '{{ $json.taskPriority }}',\n  '{{ $json.notificationType }}',\n  '{{ $json.notificationMessage }}',\n  '{{ $json.triggeredBy }}',\n  NOW()\n)\nRETURNING id",
+        "options": {}
+      },
+      "id": "log-event",
+      "name": "Log Event to DB",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [1050, 500],
+      "credentials": {
+        "postgres": {
+          "id": "w2mBaRwhZ3tM4FUw",
+          "name": "Postgres Marcos Daniels."
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, event: $('Process Event').first().json.event, logged: true }) }}",
+        "options": {}
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 500]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare group notification\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    message: data.notificationMessage,\n    chat_id: process.env.TELEGRAM_GROUP_ID || '-1001234567890',\n    priority: data.taskPriority,\n    event: data.event\n  }\n}];"
+      },
+      "id": "prepare-group-notify",
+      "name": "Prepare Group Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare responsible alert\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    message: data.notificationMessage,\n    responsible: data.task?.assigned_to || 'team',\n    taskId: data.taskId,\n    event: data.event\n  }\n}];"
+      },
+      "id": "prepare-alert",
+      "name": "Prepare Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 150]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare overdue notification\nconst data = $input.first().json;\n\nreturn [{\n  json: {\n    message: `🔴 URGENTE\\n\\n${data.notificationMessage}`,\n    urgency: 'high',\n    taskId: data.taskId,\n    event: data.event\n  }\n}];"
+      },
+      "id": "prepare-overdue",
+      "name": "Prepare Overdue Alert",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "content": "## MIS Sentinel - Task Events Webhook\n\n### Eventos Suportados:\n- `task.created` → Notifica grupo se prioridade urgent/high\n- `task.completed` → Log de conclusão\n- `task.blocked` → Alerta responsável\n- `task.overdue` → Notifica prazo estourado\n- `task.due_soon` → Lembrete 24h antes\n\n### Endpoint:\n`POST /webhook/mis-task-events`\n\n### Configurar:\n1. Adicionar credenciais Telegram\n2. Configurar ID do grupo\n3. Criar tabela task_event_logs no Supabase",
+        "height": 400,
+        "width": 350
+      },
+      "id": "sticky-note",
+      "name": "Documentation",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [40, 40]
+    }
+  ],
+  "connections": {
+    "Task Events Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Event": {
+      "main": [
+        [
+          {
+            "node": "Is Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Valid?": {
+      "main": [
+        [
+          {
+            "node": "Route by Notification Type",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Notification Type": {
+      "main": [
+        [
+          {
+            "node": "Prepare Group Notification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Overdue Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Event to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Group Notification": {
+      "main": [
+        [
+          {
+            "node": "Log Event to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Event to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Overdue Alert": {
+      "main": [
+        [
+          {
+            "node": "Log Event to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Event to DB": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "mis-sentinel-task-events"
+  },
+  "tags": [
+    {
+      "name": "MIS Sentinel"
+    },
+    {
+      "name": "Webhooks"
+    },
+    {
+      "name": "Tasks"
+    }
+  ]
+}
